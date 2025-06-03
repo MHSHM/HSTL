@@ -1,0 +1,22 @@
+# -----------------------------------------------------------------
+# Sources & public headers
+# (replace with your actual files)
+# -----------------------------------------------------------------
+set(HSTL_PUBLIC_HEADERS)
+
+set(HSTL_SOURCES src/main.cpp)
+
+# -----------------------------------------------------------------
+# Target definition
+# -----------------------------------------------------------------
+add_library(HSTL STATIC ${HSTL_SOURCES} ${HSTL_PUBLIC_HEADERS})
+
+add_library(HSTL::HSTL ALIAS HSTL)
+
+# Public headers are in include/
+target_include_directories(HSTL
+    PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:include>)
+
+target_compile_features(HSTL PUBLIC cxx_std_20)
