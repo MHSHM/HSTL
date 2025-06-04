@@ -2,7 +2,7 @@
 # Sources & public headers
 # (replace with your actual files)
 # -----------------------------------------------------------------
-set(HSTL_PUBLIC_HEADERS)
+set(HSTL_PUBLIC_HEADERS include/Json_Value.h)
 
 set(HSTL_SOURCES src/main.cpp)
 

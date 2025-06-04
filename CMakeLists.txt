@@ -1,9 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 
-project(HSTL
-        VERSION 0.1.0
-        DESCRIPTION "Home-grown STL-like containers & algorithms"
-        LANGUAGES CXX)
+project(HSTL VERSION 0.1.0 DESCRIPTION "Home-grown STL-like containers & algorithms" LANGUAGES CXX)
 
 set(BIN_DIR "${CMAKE_BINARY_DIR}/bin")
 
