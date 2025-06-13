@@ -3,34 +3,45 @@
 
 using namespace hstl;
 
+void Json_Value::value_destruct(Json_Value* json_value)
+{
+	switch (json_value->active_value_type)
+	{
+	case STRING: json_value->value.s.~basic_string(); break;
+	case ARRAY:  json_value->value.array.~vector();   break;
+	case OBJECT: json_value->value.object.~unordered_map(); break;
+	default: break;                       // BOOL, NUMBER, EMPTY
+	}
+	json_value->active_value_type = VALUE_TYPE::EMPTY;
+}
+
+void Json_Value::value_construct(const Json_Value& src, Json_Value* out)
+{
+	switch (src.active_value_type)
+	{
+	case BOOL:   out->value.b = src.value.b; break;
+	case NUMBER: out->value.d = src.value.d; break;
+	case STRING: new (&out->value.s) std::string(src.value.s); break;
+	case ARRAY:  new (&out->value.array) Array(src.value.array); break;
+	case OBJECT: new (&out->value.object) Object(src.value.object); break;
+	case EMPTY:
+	default: break;
+	}
+	out->active_value_type = src.active_value_type;
+}
+
 Json_Value::Json_Value()
 	:active_value_type(EMPTY) {}
 
 Json_Value::~Json_Value()
 {
-	switch (active_value_type)
-	{
-	case STRING: value.s.~basic_string(); break;
-	case ARRAY:  value.array.~vector();   break;
-	case OBJECT: value.object.~unordered_map(); break;
-	default: break;                       // BOOL, NUMBER, EMPTY
-	}
+	value_destruct(this);
 }
 
 Json_Value::Json_Value(const Json_Value& src)
 	:active_value_type(EMPTY)
 {
-	switch (src.active_value_type)
-	{
-	case BOOL:   value.b = src.value.b; break;
-	case NUMBER: value.d = src.value.d; break;
-	case STRING: new (&value.s) std::string(src.value.s); break;
-	case ARRAY:  new (&value.array) Array(src.value.array); break;
-	case OBJECT: new (&value.object) Object(src.value.object); break;
-	case EMPTY:
-	default: break;
-	}
-	active_value_type = src.active_value_type;
+	value_construct(src, this);
 }
 
 Json_Value& Json_Value::operator=(const Json_Value& src)
@@ -41,28 +52,10 @@ Json_Value& Json_Value::operator=(const Json_Value& src)
 	// destroy current payload (if any)
 	if (active_value_type != EMPTY)
 	{
-		switch (active_value_type)
-		{
-		case STRING: value.s.~basic_string(); break;
-		case ARRAY:  value.array.~vector();   break;
-		case OBJECT: value.object.~unordered_map(); break;
-		default: break;
-		}
-		active_value_type = EMPTY;
+		value_destruct(this);
 	}
 
-	// copy from source
-	switch (src.active_value_type)
-	{
-	case BOOL:   value.b = src.value.b; break;
-	case NUMBER: value.d = src.value.d; break;
-	case STRING: new (&value.s) std::string(src.value.s); break;
-	case ARRAY:  new (&value.array) Array(src.value.array); break;
-	case OBJECT: new (&value.object) Object(src.value.object); break;
-	case EMPTY:
-	default: break;
-	}
-	active_value_type = src.active_value_type;
+	value_construct(src, this);
 	return *this;
 }
 

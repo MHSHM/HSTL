@@ -42,6 +42,10 @@ namespace hstl
 		Value       value;
 		VALUE_TYPE  active_value_type;
 
+	private:
+		static void value_destruct(Json_Value* value);
+		static void value_construct(const Json_Value& src, Json_Value* out);
+
 	public:
 		Json_Value();
 		Json_Value(const Json_Value& src);
