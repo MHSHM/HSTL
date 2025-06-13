@@ -22,14 +22,15 @@ TEST_CASE("Scalar constructors")
 		REQUIRE(jb.value.b == true);
 	}
 
-	SECTION("double")
+	SECTION("Number")
 	{
 		Json_Value jd(3.14159);
-		REQUIRE(jd.active_value_type == Json_Value::VALUE_TYPE::DOUBLE);
+
+		REQUIRE(jd.active_value_type == Json_Value::VALUE_TYPE::NUMBER);
 		REQUIRE(jd.value.d == 3.14159);
 	}
 
-	SECTION("std::string")
+	SECTION("String")
 	{
 		Json_Value js(std::string("hello"));
 		REQUIRE(js.active_value_type == Json_Value::VALUE_TYPE::STRING);
@@ -61,7 +62,7 @@ TEST_CASE("Array constructor (std::initializer_list)")
 	REQUIRE(jarr.active_value_type == Json_Value::VALUE_TYPE::ARRAY);
 	REQUIRE(jarr.value.array.size() == 4);
 
-	REQUIRE(jarr.value.array[0].active_value_type == Json_Value::VALUE_TYPE::DOUBLE);
+	REQUIRE(jarr.value.array[0].active_value_type == Json_Value::VALUE_TYPE::NUMBER);
 	REQUIRE(jarr.value.array[0].value.d == 1.0);
 
 	REQUIRE(jarr.value.array[3].active_value_type == Json_Value::VALUE_TYPE::STRING);

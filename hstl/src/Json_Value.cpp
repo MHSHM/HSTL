@@ -13,7 +13,7 @@ Json_Value::~Json_Value()
 	case STRING: value.s.~basic_string(); break;
 	case ARRAY:  value.array.~vector();   break;
 	case OBJECT: value.object.~unordered_map(); break;
-	default: break;                       // BOOL, DOUBLE, EMPTY
+	default: break;                       // BOOL, NUMBER, EMPTY
 	}
 }
 
@@ -23,10 +23,10 @@ Json_Value::Json_Value(const Json_Value& src)
 	switch (src.active_value_type)
 	{
 	case BOOL:   value.b = src.value.b; break;
-	case DOUBLE: value.d = src.value.d; break;
+	case NUMBER: value.d = src.value.d; break;
 	case STRING: new (&value.s) std::string(src.value.s); break;
-	case ARRAY:  new (&value.array) std::vector<Json_Value>(src.value.array); break;
-	case OBJECT: new (&value.object) std::unordered_map<std::string, Json_Value>(src.value.object); break;
+	case ARRAY:  new (&value.array) Array(src.value.array); break;
+	case OBJECT: new (&value.object) Object(src.value.object); break;
 	case EMPTY:
 	default: break;
 	}
@@ -55,10 +55,10 @@ Json_Value& Json_Value::operator=(const Json_Value& src)
 	switch (src.active_value_type)
 	{
 	case BOOL:   value.b = src.value.b; break;
-	case DOUBLE: value.d = src.value.d; break;
+	case NUMBER: value.d = src.value.d; break;
 	case STRING: new (&value.s) std::string(src.value.s); break;
-	case ARRAY:  new (&value.array) std::vector<Json_Value>(src.value.array); break;
-	case OBJECT: new (&value.object) std::unordered_map<std::string, Json_Value>(src.value.object); break;
+	case ARRAY:  new (&value.array) Array(src.value.array); break;
+	case OBJECT: new (&value.object) Object(src.value.object); break;
 	case EMPTY:
 	default: break;
 	}
@@ -73,7 +73,7 @@ Json_Value::Json_Value(const bool& b)
 }
 
 Json_Value::Json_Value(const double& d)
-	:active_value_type(DOUBLE)
+	:active_value_type(NUMBER)
 {
 	value.d = d;
 }
@@ -90,26 +90,51 @@ Json_Value::Json_Value(const char* s)
 	new (&value.s) std::string(s);
 }
 
-Json_Value::Json_Value(const std::vector<Json_Value>& array)
+Json_Value::Json_Value(const Array& array)
 	:active_value_type(ARRAY)
 {
-	new (&value.array) std::vector<Json_Value>(array);
+	new (&value.array) Array(array);
 }
 
 Json_Value::Json_Value(const std::initializer_list<Json_Value>& il)
 	:active_value_type(ARRAY)
 {
-	new (&value.array) std::vector<Json_Value>(il);
+	new (&value.array) Array(il);
 }
 
-Json_Value::Json_Value(const std::unordered_map<std::string, Json_Value>& object)
+Json_Value::Json_Value(const Object& object)
 	:active_value_type(OBJECT)
 {
-	new (&value.object) std::unordered_map<std::string, Json_Value>(object);
+	new (&value.object) Object(object);
 }
 
 Json_Value::Json_Value(const std::initializer_list<std::pair<std::string, Json_Value>>& il)
 	:active_value_type(OBJECT)
 {
-	new (&value.object) std::unordered_map<std::string, Json_Value>(il.begin(), il.end());
+	new (&value.object) Object(il.begin(), il.end());
+}
+
+bool Json_Value::get_as_bool()  const
+{
+	return value.b;
+}
+
+double Json_Value::get_as_number() const
+{
+	return value.d;
+}
+
+const std::string& Json_Value::get_as_string() const
+{
+	return value.s;
+}
+
+const Json_Value::Array& Json_Value::get_as_array() const
+{
+	return value.array;
+}
+
+const Json_Value::Object& Json_Value::get_as_object() const
+{
+	return value.object;
 }
