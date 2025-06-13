@@ -131,3 +131,38 @@ const Json_Value::Object& Json_Value::get_as_object() const
 {
 	return value.object;
 }
+
+void Json_Value::set_as_bool(bool _b)
+{
+	value_destruct(this);
+	value.b = _b;
+	active_value_type = VALUE_TYPE::BOOL;
+}
+
+void Json_Value::set_as_number(double _d)
+{
+	value_destruct(this);
+	value.d = _d;
+	active_value_type = VALUE_TYPE::NUMBER;
+}
+
+void Json_Value::set_as_string(const std::string& _s)
+{
+	value_destruct(this);
+	new (&value.s) std::string(_s);
+	active_value_type = VALUE_TYPE::STRING;
+}
+
+void Json_Value::set_as_array(const std::initializer_list<Json_Value>& il)
+{
+	value_destruct(this);
+	new (&value.array) Array(il);
+	active_value_type = VALUE_TYPE::ARRAY;
+}
+
+void Json_Value::set_as_object(const std::initializer_list<std::pair<std::string, Json_Value>>& il)
+{
+	value_destruct(this);
+	new (&value.object) Object(il.begin(), il.end());
+	active_value_type = VALUE_TYPE::OBJECT;
+}

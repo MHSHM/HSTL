@@ -192,3 +192,56 @@ TEST_CASE("Getters")
 		REQUIRE(age  == 25.0);
 	}
 }
+
+TEST_CASE("Setters")
+{
+	SECTION("Bool")
+	{
+		Json_Value value;
+		value.set_as_bool(true);
+		REQUIRE(value.active_value_type == Json_Value::VALUE_TYPE::BOOL);
+		auto val = value.get_as_bool();
+		REQUIRE(val == true);
+	}
+
+	SECTION("Number")
+	{
+		Json_Value value;
+		value.set_as_number(1.123);
+		REQUIRE(value.active_value_type == Json_Value::VALUE_TYPE::NUMBER);
+		auto val = value.get_as_number();
+		REQUIRE(val == 1.123);
+	}
+
+	SECTION("String")
+	{
+		Json_Value value;
+		value.set_as_string("Hello");
+		REQUIRE(value.active_value_type == Json_Value::VALUE_TYPE::STRING);
+		auto val = value.get_as_string();
+		REQUIRE(val == "Hello");
+	}
+
+	SECTION("Array")
+	{
+		Json_Value value;
+		value.set_as_array({1.0, "Hello"});
+		REQUIRE(value.active_value_type == Json_Value::VALUE_TYPE::ARRAY);
+		auto val = value.get_as_array();
+		REQUIRE(val[0].get_as_number() == 1.0);
+		REQUIRE(val[1].get_as_string() == "Hello");
+	}
+
+	SECTION("Object")
+	{
+		Json_Value value;
+		value.set_as_object({
+			std::make_pair("name", "Mohamed"),
+			std::make_pair("salary", 1000000.0)
+		});
+		REQUIRE(value.active_value_type == Json_Value::VALUE_TYPE::OBJECT);
+		auto val = value.get_as_object();
+		REQUIRE(val["name"].get_as_string() == "Mohamed");
+		REQUIRE(val["salary"].get_as_number() == 1000000.0);
+	}
+}
