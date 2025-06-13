@@ -144,3 +144,51 @@ TEST_CASE("Copy assignment")
 	REQUIRE(arr_0.value.array[2].active_value_type == arr_1.value.array[2].active_value_type);
 	REQUIRE(arr_0.value.array[2].value.b == arr_1.value.array[2].value.b);
 }
+
+TEST_CASE("Getters")
+{
+	SECTION("Bool")
+	{
+		Json_Value boolean(true);
+		bool b = boolean.get_as_bool();
+		REQUIRE(b == true);
+	}
+
+	SECTION("Number")
+	{
+		Json_Value number(1.123);
+		double d = number.get_as_number();
+		REQUIRE(d == 1.123);
+	}
+
+	SECTION("String")
+	{
+		Json_Value string("test");
+		std::string s = string.get_as_string();
+		REQUIRE(s == "test");
+	}
+
+	SECTION("Array")
+	{
+		Json_Value array({1.0, "test", true});
+		auto arr = array.get_as_array();
+		REQUIRE(arr[0].get_as_number() == 1.0);
+		REQUIRE(arr[1].get_as_string() == "test");
+		REQUIRE(arr[2].get_as_bool() == true);
+	}
+
+	SECTION("Object")
+	{
+		Json_Value object({
+			std::make_pair("name", "Mohamed"),
+			std::make_pair("age", 25.0)
+		});
+
+		auto obj  = object.get_as_object();
+		auto name = obj["name"].get_as_string();
+		auto age  = obj["age"].get_as_number();
+
+		REQUIRE(name == "Mohamed");
+		REQUIRE(age  == 25.0);
+	}
+}

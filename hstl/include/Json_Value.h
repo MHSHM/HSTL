@@ -10,10 +10,11 @@ namespace hstl
 {
 	class Json_Value
 	{
-	private:
+	public:
 		using Array  = std::vector<Json_Value>;
 		using Object = std::unordered_map<std::string, Json_Value>;
 
+	private:
 		enum VALUE_TYPE
 		{
 			BOOL,
