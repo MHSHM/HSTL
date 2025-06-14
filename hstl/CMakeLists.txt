@@ -1,8 +1,11 @@
-set(HSTL_PUBLIC_HEADERS include/Json_Value.h)
+set(HSTL_PUBLIC_HEADERS
+    include/Json_Value.h
+    include/Json_Reader.h)
 
 set(HSTL_SOURCES
     src/main.cpp
-    src/Json_Value.cpp)
+    src/Json_Value.cpp
+    src/Json_Reader.cpp)
 
 add_library(HSTL STATIC ${HSTL_SOURCES} ${HSTL_PUBLIC_HEADERS})
 
