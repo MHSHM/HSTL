@@ -15,7 +15,7 @@ namespace hstl
 		using Object = std::unordered_map<std::string, Json_Value>;
 
 	private:
-		enum VALUE_TYPE
+		enum class VALUE_TYPE
 		{
 			BOOL,
 			NUMBER,
