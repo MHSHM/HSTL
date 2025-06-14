@@ -1,4 +1,5 @@
 set(HSTL_PUBLIC_HEADERS
+    include/Result.h
     include/Json_Value.h
     include/Json_Reader.h)
 
