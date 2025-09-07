@@ -30,6 +30,8 @@ int main()
 		std::make_pair("Age", "25")
 	});
 
+	hstl::Result<std::string_view> ress{std::string("hello")};
+
 	auto res = calc(10);
 	auto res2 = calc(11);
 
@@ -39,7 +41,6 @@ int main()
 	}
 	else
 	{
-		std::cout << res.get_error();
 	}
 
 	if (res2)
@@ -48,7 +49,6 @@ int main()
 	}
 	else
 	{
-		std::cout << res2.get_error();
 	}
 
 	return 0;

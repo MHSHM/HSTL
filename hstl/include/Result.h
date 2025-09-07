@@ -6,7 +6,18 @@
 
 namespace hstl
 {
-	using Err = std::string;
+	class Err
+	{
+	public:
+		Err() = delete;
+		explicit Err(const std::string& _message):
+			message(_message) {}
+
+		const std::string& get_message() const { return message; }
+
+	private:
+		std::string message;
+	};
 
 	template<typename T>
 	class Result
@@ -20,12 +31,12 @@ namespace hstl
 			value(_value),
 			err(std::nullopt) {}
 
-		operator bool() const { return !err.has_value(); }
+		operator bool() const {return !err.has_value();}
 
-		const Err& get_error() const
+		const std::string& get_error() const
 		{
 			assert(err.has_value() && "The result is successful, it has no error attached");
-			return *err;
+			return (*err).get_message();
 		}
 
 		const T& get_value() const
