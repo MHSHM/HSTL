@@ -3,8 +3,6 @@
 #include <vector>
 #include <unordered_map>
 #include <initializer_list>
-#include <span>
-#include <ranges>
 
 namespace hstl
 {
@@ -45,15 +43,18 @@ namespace hstl
 	private:
 		static void value_destruct(Json_Value* value);
 		static void value_construct(const Json_Value& src, Json_Value* out);
+		static void value_move(Json_Value&& src, Json_Value* out);
 
 	public:
-		Json_Value();
 		Json_Value(const Json_Value& src);
+		Json_Value(Json_Value&& src);
 		Json_Value& operator=(const Json_Value& src);
+		Json_Value& operator=(Json_Value&& src);
 		~Json_Value();
 
-		Json_Value(const bool& b);
-		Json_Value(const double& d);
+		Json_Value();
+		Json_Value(bool b);
+		Json_Value(double d);
 		Json_Value(const std::string& s);
 		Json_Value(const char* s);
 

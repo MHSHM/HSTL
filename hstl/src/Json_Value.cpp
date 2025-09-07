@@ -1,5 +1,7 @@
 #include "Json_Value.h"
+
 #include <new>
+#include <assert.h>
 
 using namespace hstl;
 
@@ -30,6 +32,21 @@ void Json_Value::value_construct(const Json_Value& src, Json_Value* out)
 	out->active_value_type = src.active_value_type;
 }
 
+void Json_Value::value_move(Json_Value&& src, Json_Value* out)
+{
+	switch (src.active_value_type)
+	{
+	case VALUE_TYPE::BOOL:   out->value.b = src.value.b; break;
+	case VALUE_TYPE::NUMBER: out->value.d = src.value.d; break;
+	case VALUE_TYPE::STRING: new (&out->value.s) std::string(std::move(src.value.s)); break;
+	case VALUE_TYPE::ARRAY:  new (&out->value.array) Array(std::move(src.value.array)); break;
+	case VALUE_TYPE::OBJECT: new (&out->value.object) Object(std::move(src.value.object)); break;
+	case VALUE_TYPE::EMPTY:
+	default: break;
+	}
+	out->active_value_type = src.active_value_type;
+}
+
 Json_Value::Json_Value()
 	:active_value_type(VALUE_TYPE::EMPTY) {}
 
@@ -42,6 +59,12 @@ Json_Value::Json_Value(const Json_Value& src)
 	:active_value_type(VALUE_TYPE::EMPTY)
 {
 	value_construct(src, this);
+}
+
+Json_Value::Json_Value(Json_Value&& src)
+	:active_value_type(VALUE_TYPE::EMPTY)
+{
+	value_move(std::move(src), this);
 }
 
 Json_Value& Json_Value::operator=(const Json_Value& src)
@@ -59,13 +82,28 @@ Json_Value& Json_Value::operator=(const Json_Value& src)
 	return *this;
 }
 
-Json_Value::Json_Value(const bool& b)
+Json_Value& Json_Value::operator=(Json_Value&& src)
+{
+	if (this == &src)
+		return *this;
+
+	// destroy current payload (if any)
+	if (active_value_type != VALUE_TYPE::EMPTY)
+	{
+		value_destruct(this);
+	}
+
+	value_move(std::move(src), this);
+	return *this;
+}
+
+Json_Value::Json_Value(bool b)
 	:active_value_type(VALUE_TYPE::BOOL)
 {
 	value.b = b;
 }
 
-Json_Value::Json_Value(const double& d)
+Json_Value::Json_Value(double d)
 	:active_value_type(VALUE_TYPE::NUMBER)
 {
 	value.d = d;
@@ -109,26 +147,31 @@ Json_Value::Json_Value(const std::initializer_list<std::pair<std::string, Json_V
 
 bool Json_Value::get_as_bool()  const
 {
+	assert(active_value_type == VALUE_TYPE::BOOL);
 	return value.b;
 }
 
 double Json_Value::get_as_number() const
 {
+	assert(active_value_type == VALUE_TYPE::NUMBER);
 	return value.d;
 }
 
 const std::string& Json_Value::get_as_string() const
 {
+	assert(active_value_type == VALUE_TYPE::STRING);
 	return value.s;
 }
 
 const Json_Value::Array& Json_Value::get_as_array() const
 {
+	assert(active_value_type == VALUE_TYPE::ARRAY);
 	return value.array;
 }
 
 const Json_Value::Object& Json_Value::get_as_object() const
 {
+	assert(active_value_type == VALUE_TYPE::OBJECT);
 	return value.object;
 }
 

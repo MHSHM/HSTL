@@ -245,3 +245,33 @@ TEST_CASE("Setters")
 		REQUIRE(val["salary"].get_as_number() == 1000000.0);
 	}
 }
+
+TEST_CASE("Move constructor")
+{
+	SECTION("String")
+	{
+		std::string big(10000, 'x');
+		Json_Value src(big);                 // STRING
+		Json_Value dst(std::move(src));      // move-construct
+
+		// Destination got the content
+		REQUIRE(dst.get_as_string().size() == big.size());
+		REQUIRE(dst.get_as_string()[0] == 'x');
+
+		src.set_as_number(42.0);
+		REQUIRE(src.get_as_number() == 42.0);
+	}
+
+	SECTION("Array")
+	{
+		Json_Value src{std::initializer_list<Json_Value>{"a", 1.0}};
+		Json_Value dst(std::move(src));
+
+		REQUIRE(dst.get_as_array().size() == 2);
+		REQUIRE(dst.get_as_array()[0].get_as_string() == "a");
+		REQUIRE(dst.get_as_array()[1].get_as_number() == 1.0);
+
+		src.set_as_bool(true);
+		REQUIRE(src.get_as_bool() == true);
+	}
+}
