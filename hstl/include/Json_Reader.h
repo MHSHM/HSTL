@@ -7,7 +7,18 @@ namespace hstl
 {
 	enum class TOKEN_TYPE
 	{
-	
+		LEFT_BRACE,    // {
+		RIGHT_BRACE,   // }
+		LEFT_BRACKET,  // [
+		RIGHT_BRACKET, // ]
+		COLON,         // :
+		COMMA,         // ,
+		STRING,
+		NUMBER,
+		TRUE,
+		FALSE,
+		NIL,
+		END, // end of file
 	};
 
 	class Token
@@ -19,7 +30,7 @@ namespace hstl
 		struct
 		{
 			uint32_t line;
-			uint32_t byte_offset;
+			size_t byte_offset;
 			uint32_t column;
 		} loc;
 		std::string payload;
