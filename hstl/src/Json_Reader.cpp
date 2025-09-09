@@ -2,48 +2,74 @@
 
 #include <string>
 #include <vector>
+#include <cctype>
 
-namespace hstl
+using namespace hstl;
+
+Lexer::Lexer(const std::string& _json_stream):
+	json_stream(_json_stream),
+	current(0),
+	line(1u),
+	byte_offset(0)
 {
-	enum class TOKEN_TYPE
+}
+
+Result<Token> Lexer::next()
+{
+	Token token {};
+
+	if (current >= json_stream.size())
 	{
-		L_BRACE,
-		R_BRACE,
-		L_BRACKET,
-		R_BRACKET,
-		STRING,
-		COLON,
-		COMMA,
-		NUMBER,
-		FALSE,
-		TRUE,
-		NIL,
-		END_OF_INPUT
-	};
-
-	struct Token
-	{
-		TOKEN_TYPE type;
-
-		union
-		{
-			const char* text;
-			double number;
-			bool boolean;
-		} data;
-	};
-
-	class Tokenizer
-	{
-	public:
-		Tokenizer(const std::string& raw_json);
-
-	private:
-		std::vector<Token> tokens;
-	};
-
-	Tokenizer::Tokenizer(const std::string& raw_json)
-	{
-		// Generate tokens
+		token.type = TOKEN_TYPE::END;
+		token.loc.byte_offset = byte_offset++;
+		token.loc.line = line;
+		return token;
 	}
-};
+
+	while (current < json_stream.size() && std::isspace(json_stream[current]))
+	{
+		switch (json_stream[current++])
+		{
+		case '\n':
+			++line;
+			break;
+		default:
+			break;
+		}
+		byte_offset += sizeof(char);
+	}
+
+	while (current < json_stream.size() && std::isdigit(json_stream[current]))
+	{
+		token.type = TOKEN_TYPE::NUMBER;
+		token.loc.byte_offset = byte_offset++;
+		token.loc.line = line;
+		token.payload += json_stream[current++];
+	}
+
+	if (token.type == TOKEN_TYPE::NUMBER)
+	{
+		return token;
+	}
+
+	while (current < json_stream.size() && std::isalpha(json_stream[current]))
+	{
+		token.type = TOKEN_TYPE::STRING;
+		token.loc.byte_offset = byte_offset++;
+		token.loc.line = line;
+		token.payload += json_stream[current++];
+	}
+
+	if (token.type == TOKEN_TYPE::STRING)
+	{
+		return token;
+	}
+
+	// TODO: Handle the rest of the tokens
+	return Err{"Inrecognized token"};
+}
+
+Result<Token> Lexer::peek()
+{
+	return Err{"Empty"};
+}

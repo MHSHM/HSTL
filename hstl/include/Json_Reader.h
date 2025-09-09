@@ -1,7 +1,10 @@
 #pragma once
 
+#include "Result.h"
+
 #include <vector>
 #include <string>
+#include <string_view>
 
 namespace hstl
 {
@@ -21,17 +24,13 @@ namespace hstl
 		END, // end of file
 	};
 
-	class Token
+	struct Token
 	{
-	public:
-
-	private:
 		TOKEN_TYPE type;
 		struct
 		{
 			uint32_t line;
 			size_t byte_offset;
-			uint32_t column;
 		} loc;
 		std::string payload;
 	};
@@ -39,8 +38,14 @@ namespace hstl
 	class Lexer
 	{
 	public:
+		Lexer(const std::string& _json_stream);
+		Result<Token> next();
+		Result<Token> peek();
 
 	private:
-		std::vector<Token> tokens;
+		std::string json_stream;
+		size_t current;
+		uint32_t line;
+		size_t byte_offset;
 	};
 };
