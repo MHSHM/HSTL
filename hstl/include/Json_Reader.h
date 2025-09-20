@@ -27,11 +27,7 @@ namespace hstl
 	struct Token
 	{
 		TOKEN_TYPE type;
-		struct
-		{
-			uint32_t line;
-			size_t byte_offset;
-		} loc;
+		uint32_t line;
 		std::string payload;
 	};
 

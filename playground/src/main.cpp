@@ -7,6 +7,7 @@
 
 #include <Json_Value.h>
 #include <Result.h>
+#include <Json_Reader.h>
 
 hstl::Result<int> calc(int i)
 {
@@ -18,37 +19,50 @@ hstl::Result<int> calc(int i)
 	return hstl::Err{"The provided number is not even\n"};
 }
 
+const char* _token_type_to_str(hstl::TOKEN_TYPE type)
+{
+	switch (type)
+	{
+	case hstl::TOKEN_TYPE::LEFT_BRACE: return "LEFT_BRACE";
+	case hstl::TOKEN_TYPE::RIGHT_BRACE: return "RIGHT_BRACE";
+	case hstl::TOKEN_TYPE::LEFT_BRACKET: return "LEFT_BRACKET";
+	case hstl::TOKEN_TYPE::RIGHT_BRACKET: return "RIGHT_BRACKET";
+	case hstl::TOKEN_TYPE::COLON: return "COLON";
+	case hstl::TOKEN_TYPE::COMMA: return "COMMA";
+	case hstl::TOKEN_TYPE::STRING: return "STRING";
+	case hstl::TOKEN_TYPE::NUMBER: return "NUMBER";
+	case hstl::TOKEN_TYPE::TRUE: return "TRUE";
+	case hstl::TOKEN_TYPE::FALSE: return "FALSE";
+	case hstl::TOKEN_TYPE::NIL: return "NULL";
+	case hstl::TOKEN_TYPE::END: return "EOF";
+	}
+
+	return "";
+}
+
 int main()
 {
-	hstl::Json_Value a;
-	hstl::Json_Value b("test");
-	hstl::Json_Value c(true);
-	hstl::Json_Value d(1.0);
-	hstl::Json_Value array({1.0, 2.0, "Test"});
-	hstl::Json_Value object({
-		std::make_pair("Name", "Mohamed"),
-		std::make_pair("Age", "25")
-	});
+	std::string json = R"({
+        "name": "Alice",
+        "active": true,
+        "deleted": false,
+        "age": 30,
+        "score": 99,
+        "status": "ok"
+    })";
 
-	hstl::Result<std::string_view> ress{std::string("hello")};
+	auto lexer = hstl::Lexer(json);
 
-	auto res = calc(10);
-	auto res2 = calc(11);
+	while (auto token = lexer.next())
+	{
+		std::cout << "Token type: " << _token_type_to_str(token.get_value().type) << '\n';
+		std::cout << "Token line: " << token.get_value().line << '\n';
+		std::cout << "Token payload: " << token.get_value().payload << "\n\n\n";
 
-	if (res)
-	{
-		std::cout << "Even\n";
-	}
-	else
-	{
-	}
-
-	if (res2)
-	{
-		std::cout << "Odd\n";
-	}
-	else
-	{
+		if (token.get_value().type == hstl::TOKEN_TYPE::END)
+		{
+			break;
+		}
 	}
 
 	return 0;

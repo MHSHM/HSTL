@@ -17,16 +17,17 @@ Lexer::Lexer(const std::string& _json_stream):
 Result<Token> Lexer::next()
 {
 	Token token {};
+	token.type = TOKEN_TYPE::END;
+	size_t json_size = json_stream.size();
 
 	if (current >= json_stream.size())
 	{
 		token.type = TOKEN_TYPE::END;
-		token.loc.byte_offset = byte_offset++;
-		token.loc.line = line;
+		token.line = line;
 		return token;
 	}
 
-	while (current < json_stream.size() && std::isspace(json_stream[current]))
+	while (current < json_size && std::isspace(json_stream[current]))
 	{
 		switch (json_stream[current++])
 		{
@@ -39,11 +40,11 @@ Result<Token> Lexer::next()
 		byte_offset += sizeof(char);
 	}
 
-	while (current < json_stream.size() && std::isdigit(json_stream[current]))
+	// TODO:This is a very naive number processing, handle -, fractions etc
+	while (current < json_size && std::isdigit(json_stream[current]))
 	{
 		token.type = TOKEN_TYPE::NUMBER;
-		token.loc.byte_offset = byte_offset++;
-		token.loc.line = line;
+		token.line = line;
 		token.payload += json_stream[current++];
 	}
 
@@ -52,21 +53,93 @@ Result<Token> Lexer::next()
 		return token;
 	}
 
-	while (current < json_stream.size() && std::isalpha(json_stream[current]))
+	// TODO: This is a very naive string processing, handle escape charachter etc
+	if (json_stream[current] == '\"')
 	{
 		token.type = TOKEN_TYPE::STRING;
-		token.loc.byte_offset = byte_offset++;
-		token.loc.line = line;
-		token.payload += json_stream[current++];
+		auto current_char = json_stream[++current];
+		while (current < json_size && current_char != '\"')
+		{
+			token.line = line;
+			token.payload += json_stream[current];
+			current_char = json_stream[++current];
+		}
+		++current; // the closing quote
+		return token;
 	}
 
-	if (token.type == TOKEN_TYPE::STRING)
+	while (current < json_size && std::isalpha(json_stream[current]))
+	{
+		token.line = line;
+		token.payload += std::tolower(json_stream[current++]);
+	}
+
+	if (token.payload == "true")
+	{
+		token.type = TOKEN_TYPE::TRUE;
+	}
+	else if (token.payload == "false")
+	{
+		token.type = TOKEN_TYPE::FALSE;
+	}
+	else if (token.payload == "null")
+	{
+		token.type = TOKEN_TYPE::NIL;
+	}
+
+	if (token.type != TOKEN_TYPE::END)
 	{
 		return token;
 	}
 
-	// TODO: Handle the rest of the tokens
-	return Err{"Inrecognized token"};
+	if (json_stream[current] == '}')
+	{
+		token.type = TOKEN_TYPE::RIGHT_BRACE;
+		token.line = line;
+		++current;
+	}
+
+	if (json_stream[current] == '{')
+	{
+		token.type = TOKEN_TYPE::LEFT_BRACE;
+		token.line = line;
+		++current;
+	}
+
+	if (json_stream[current] == ']')
+	{
+		token.type = TOKEN_TYPE::RIGHT_BRACKET;
+		token.line = line;
+		++current;
+	}
+
+	if (json_stream[current] == '[')
+	{
+		token.type = TOKEN_TYPE::LEFT_BRACKET;
+		token.line = line;
+		++current;
+	}
+
+	if (json_stream[current] == ':')
+	{
+		token.type = TOKEN_TYPE::COLON;
+		token.line = line;
+		++current;
+	}
+
+	if (json_stream[current] == ',')
+	{
+		token.type = TOKEN_TYPE::COMMA;
+		token.line = line;
+		++current;
+	}
+
+	if (token.type != TOKEN_TYPE::END)
+	{
+		return token;
+	}
+
+	return Err{"Unrecognized token"};
 }
 
 Result<Token> Lexer::peek()
