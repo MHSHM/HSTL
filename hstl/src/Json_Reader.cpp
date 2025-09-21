@@ -41,7 +41,7 @@ Result<Token> Lexer::next()
 	}
 
 	// TODO:This is a very naive number processing, handle -, fractions etc
-	while (current < json_size && std::isdigit(json_stream[current]))
+	while (current < json_size && (std::isdigit(json_stream[current]) || json_stream[current] == '-' || json_stream[current] == '.'))
 	{
 		token.type = TOKEN_TYPE::NUMBER;
 		token.line = line;
@@ -50,6 +50,18 @@ Result<Token> Lexer::next()
 
 	if (token.type == TOKEN_TYPE::NUMBER)
 	{
+		auto number_size = token.payload.size();
+
+		if (token.payload[0] == '-' && number_size == 1)
+		{
+			return Err{"Incorrect number"};
+		}
+
+		if (token.payload[number_size - 1] == '.' || token.payload[0] == '.')
+		{
+			return Err{"Incorrect number"};
+		}
+
 		return token;
 	}
 
@@ -98,36 +110,31 @@ Result<Token> Lexer::next()
 		token.line = line;
 		++current;
 	}
-
-	if (json_stream[current] == '{')
+	else if (json_stream[current] == '{')
 	{
 		token.type = TOKEN_TYPE::LEFT_BRACE;
 		token.line = line;
 		++current;
 	}
-
-	if (json_stream[current] == ']')
+	else if (json_stream[current] == ']')
 	{
 		token.type = TOKEN_TYPE::RIGHT_BRACKET;
 		token.line = line;
 		++current;
 	}
-
-	if (json_stream[current] == '[')
+	else if (json_stream[current] == '[')
 	{
 		token.type = TOKEN_TYPE::LEFT_BRACKET;
 		token.line = line;
 		++current;
 	}
-
-	if (json_stream[current] == ':')
+	else if (json_stream[current] == ':')
 	{
 		token.type = TOKEN_TYPE::COLON;
 		token.line = line;
 		++current;
 	}
-
-	if (json_stream[current] == ',')
+	else if (json_stream[current] == ',')
 	{
 		token.type = TOKEN_TYPE::COMMA;
 		token.line = line;

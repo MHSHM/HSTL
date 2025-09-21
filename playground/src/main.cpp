@@ -47,7 +47,7 @@ int main()
         "active": true,
         "deleted": false,
         "age": 30,
-        "score": 99,
+        "score": 99.0000,
         "status": "ok"
     })";
 
