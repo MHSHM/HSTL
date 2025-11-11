@@ -9,6 +9,8 @@
 #include <Result.h>
 #include <Json_Reader.h>
 
+#include <Defer.h>
+
 hstl::Result<int> calc(int i)
 {
 	if (i % 2 == 0)
@@ -63,6 +65,12 @@ int main()
 		{
 			break;
 		}
+	}
+
+	{
+		DEFER{
+			std::cout << "out of scope\n";
+		};
 	}
 
 	return 0;

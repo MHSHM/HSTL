@@ -1,7 +1,8 @@
 set(HSTL_PUBLIC_HEADERS
     include/Result.h
     include/Json_Value.h
-    include/Json_Reader.h)
+    include/Json_Reader.h
+    include/Defer.h)
 
 set(HSTL_SOURCES
     src/Json_Value.cpp
