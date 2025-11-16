@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstring>
+
 namespace hstl
 {
 	class Array
@@ -26,10 +28,42 @@ namespace hstl
 		void remove_if() { }
 		int* begin() const { }
 		int* end() const { }
+		bool clear() { }
 
 	private:
-		bool grow_memory(size_t size) {}
-		bool shrink_memory_to_fit() {}
+		bool grow_memory(size_t _capacity)
+		{
+			if (_capacity <= capacity)
+			{
+				return false;
+			}
+
+			auto new_data = new int[capacity];
+			memcpy(new_data, data, sizeof(int) * size /*in bytes*/);
+			delete data;
+
+			data = new_data;
+			capacity = _capacity;
+
+			return true;
+		}
+
+		bool shrink_memory_to_fit()
+		{
+			if (size == capacity)
+			{
+				return false;
+			}
+
+			auto new_data = new int[size];
+			memcpy(new_data, data, sizeof(int) * size);
+			delete data;
+
+			data = new_data;
+			capacity = size;
+
+			return true;
+		}
 
 	private:
 		int* data;
