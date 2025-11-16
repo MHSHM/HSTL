@@ -24,8 +24,12 @@ namespace hstl
 		bool remove(size_t index) { }
 		bool remove_ordered(size_t index) { }
 		void remove_if() { }
-		int* begin() { }
-		int* end() { }
+		int* begin() const { }
+		int* end() const { }
+
+	private:
+		bool grow_memory(size_t size) {}
+		bool shrink_memory_to_fit() {}
 
 	private:
 		int* data;
