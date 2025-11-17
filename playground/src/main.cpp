@@ -42,8 +42,22 @@ const char* _token_type_to_str(hstl::TOKEN_TYPE type)
 	return "";
 }
 
+template<typename T, size_t length>
+T& get(T(&arr)[length], size_t index)
+{
+	if (index >= length)
+	{
+		throw std::out_of_range{"out of bounds"};
+	}
+
+	return arr[index];
+}
+
 int main()
 {
+	int arr[] = {1, 2, 3, 4, 5};
+	auto ele = get(arr, 0);
+
 	std::string json = R"({
         "name": "Alice",
         "active": true,

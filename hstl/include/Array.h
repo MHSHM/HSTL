@@ -38,9 +38,14 @@ namespace hstl
 				return false;
 			}
 
-			auto new_data = new int[capacity];
+			if (_capacity <= size)
+			{
+				return false;
+			}
+
+			auto new_data = new int[_capacity];
 			memcpy(new_data, data, sizeof(int) * size /*in bytes*/);
-			delete data;
+			delete[] data;
 
 			data = new_data;
 			capacity = _capacity;
@@ -57,7 +62,7 @@ namespace hstl
 
 			auto new_data = new int[size];
 			memcpy(new_data, data, sizeof(int) * size);
-			delete data;
+			delete[] data;
 
 			data = new_data;
 			capacity = size;
@@ -66,8 +71,8 @@ namespace hstl
 		}
 
 	private:
-		int* data;
-		size_t size;
-		size_t capacity;
+		int* data{nullptr};
+		size_t size{0u};
+		size_t capacity{0u};
 	};
 };
