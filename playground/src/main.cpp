@@ -53,8 +53,23 @@ T& get(T(&arr)[length], size_t index)
 	return arr[index];
 }
 
+template<typename T, typename... Args>
+auto sum(T first, Args... args)
+{
+	static_assert((std::is_same<T, Args>::value && ...), "All must be the same type");
+	static_assert(sizeof...(Args) > 0u, "Needs at least one argument");
+	static_assert(std::is_default_constructible<T>::value, "T needs to be default constructable");
+	static_assert(std::is_arithmetic<T>::value, "T needs to be arithmitic");
+
+	T result{};
+	((result += args), ...);
+	return result;
+}
+
 int main()
 {
+	int res = sum(1, 2, 3, 4);
+
 	int arr[] = {1, 2, 3, 4, 5};
 	auto ele = get(arr, 0);
 
