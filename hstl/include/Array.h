@@ -1,6 +1,9 @@
 #pragma once
 
 #include <cstring>
+#include <type_traits>
+#include <exception>
+#include <stdexcept>
 
 namespace hstl
 {
@@ -31,48 +34,47 @@ namespace hstl
 		bool clear() { }
 
 	private:
-		bool grow_memory(size_t _capacity)
+		void grow_memory(size_t _capacity)
 		{
 			if (_capacity <= capacity)
 			{
-				return false;
-			}
-
-			if (_capacity <= size)
-			{
-				return false;
+				return;
 			}
 
 			auto new_data = new int[_capacity];
-			memcpy(new_data, data, sizeof(int) * size /*in bytes*/);
+
+			if (data && count > 0)
+			{
+				memcpy(new_data, data, sizeof(int) * count /*in bytes*/);
+			}
 			delete[] data;
 
 			data = new_data;
 			capacity = _capacity;
-
-			return true;
 		}
 
-		bool shrink_memory_to_fit()
+		void shrink_memory_to_fit()
 		{
-			if (size == capacity)
+			if (count == capacity)
 			{
-				return false;
+				return;
 			}
 
-			auto new_data = new int[size];
-			memcpy(new_data, data, sizeof(int) * size);
+			auto new_data = new int[count];
+
+			if (data && count > 0)
+			{
+				memcpy(new_data, data, sizeof(int) * count);
+			}
 			delete[] data;
 
 			data = new_data;
-			capacity = size;
-
-			return true;
+			capacity = count;
 		}
 
 	private:
 		int* data{nullptr};
-		size_t size{0u};
+		size_t count{0u};
 		size_t capacity{0u};
 	};
 };
