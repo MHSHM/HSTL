@@ -11,14 +11,23 @@ namespace hstl
 	{
 	public:
 		Array() = default;
-		Array(size_t capacity) {  };
-		Array(size_t size) { };
-		Array(size_t size, int value) { }
+
+		Array(size_t _count):
+			count{_count}
+		{
+			grow_memory(_count);
+			memset(data, 0, sizeof(int) * count);
+		}
+
 		Array(const Array& source) { }
 		Array& operator=(const Array& source) { }
 		Array(Array&& source) { }
 		Array& operator=(Array&& source) { }
-		~Array() noexcept { }
+
+		~Array() noexcept
+		{
+			delete[] data;
+		}
 
 	public:
 		bool reserve(size_t capacity) {}

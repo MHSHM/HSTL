@@ -8,8 +8,8 @@
 #include <Json_Value.h>
 #include <Result.h>
 #include <Json_Reader.h>
-
 #include <Defer.h>
+#include <Array.h>
 
 hstl::Result<int> calc(int i)
 {
@@ -68,10 +68,7 @@ auto sum(T first, Args... args)
 
 int main()
 {
-	int res = sum(1, 2, 3, 4);
-
-	int arr[] = {1, 2, 3, 4, 5};
-	auto ele = get(arr, 0);
+	hstl::Array arr{10};
 
 	std::string json = R"({
         "name": "Alice",
