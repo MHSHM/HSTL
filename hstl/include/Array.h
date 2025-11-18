@@ -18,7 +18,7 @@ namespace hstl
 		Array& operator=(const Array& source) { }
 		Array(Array&& source) { }
 		Array& operator=(Array&& source) { }
-		~Array() { }
+		~Array() noexcept { }
 
 	public:
 		bool reserve(size_t capacity) {}
@@ -29,9 +29,9 @@ namespace hstl
 		bool remove(size_t index) { }
 		bool remove_ordered(size_t index) { }
 		void remove_if() { }
-		int* begin() const { }
-		int* end() const { }
-		bool clear() { }
+		int* begin() const noexcept { }
+		int* end() const noexcept { }
+		bool clear() noexcept { }
 
 	private:
 		void grow_memory(size_t _capacity)
