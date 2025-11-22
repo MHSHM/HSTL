@@ -68,7 +68,13 @@ auto sum(T first, Args... args)
 
 int main()
 {
-	hstl::Array arr{10};
+	std::vector<int> v{10, 10, 10, 10, 10, 10};
+	v.resize(2);
+
+	hstl::Array a;
+	a.resize(200);
+	a.resize(100);
+	a.resize(300);
 
 	std::string json = R"({
         "name": "Alice",

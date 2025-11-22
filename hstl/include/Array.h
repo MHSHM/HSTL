@@ -85,8 +85,32 @@ namespace hstl
 		}
 
 	public:
-		bool reserve(size_t capacity) {}
-		bool resize(size_t size) { }
+		// Make sure my capacity is at least _capacity
+		void reserve(size_t _capacity)
+		{
+			grow_memory(_capacity);
+		}
+
+		void resize(size_t new_count)
+		{
+			if (new_count <= count)
+			{
+				// TODO: Call destructors for non-primitive types
+				count = new_count;
+				return;
+			}
+
+			if (new_count > capacity)
+			{
+				grow_memory(new_count);
+			}
+
+			// TODO: Call constructors for non-primitive types
+			memset(data + count, 0, sizeof(int) * (new_count - count));
+
+			count = new_count;
+		}
+
 		bool resize_with_value(size_t size, int value) { }
 		bool push(int value) { }
 		bool shrink_to_fit() { }
@@ -116,23 +140,22 @@ namespace hstl
 			capacity = _capacity;
 		}
 
-		void shrink_memory_to_fit()
+		void shrink_memory(size_t _capacity)
 		{
-			if (count == capacity)
+			if (_capacity >= capacity)
 			{
 				return;
 			}
 
-			auto new_data = new int[count];
-
-			if (data && count > 0)
+			auto new_data = new int[_capacity];
+			if (data && count > 0u)
 			{
-				memcpy(new_data, data, sizeof(int) * count);
+				memcpy(new_data, data, sizeof(int) * std::min(_capacity, count));
 			}
 			delete[] data;
 
 			data = new_data;
-			capacity = count;
+			capacity = _capacity;
 		}
 
 	private:
