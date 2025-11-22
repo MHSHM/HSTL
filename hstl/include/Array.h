@@ -37,6 +37,7 @@ namespace hstl
 				return *this;
 			}
 
+			// FIXME: Will make a redundunt memcpy
 			grow_memory(source.capacity);
 
 			if (source.count > 0)
@@ -48,8 +49,35 @@ namespace hstl
 			return *this;
 		}
 
-		Array(Array&& source) { }
-		Array& operator=(Array&& source) { }
+		Array(Array&& source) noexcept:
+			data{source.data},
+			count{source.count},
+			capacity{source.capacity}
+		{
+			source.data = nullptr;
+			source.count = 0u;
+			source.capacity = 0u;
+		}
+
+		Array& operator=(Array&& source) noexcept
+		{
+			if (this == &source)
+			{
+				return *this;
+			}
+
+			delete[] data;
+
+			data = source.data;
+			count = source.count;
+			capacity = source.capacity;
+
+			source.data = nullptr;
+			source.count = 0u;
+			source.capacity = 0u;
+
+			return *this;
+		}
 
 		~Array() noexcept
 		{
