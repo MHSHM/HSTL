@@ -19,8 +19,35 @@ namespace hstl
 			memset(data, 0, sizeof(int) * count);
 		}
 
-		Array(const Array& source) { }
-		Array& operator=(const Array& source) { }
+		Array(const Array& source):
+			data{new int[source.capacity]},
+			count{source.count},
+			capacity{source.capacity}
+		{
+			if (source.count > 0)
+			{
+				memcpy(data, source.data, sizeof(int) * count);
+			}
+		}
+
+		Array& operator=(const Array& source)
+		{
+			if (this == &source)
+			{
+				return *this;
+			}
+
+			grow_memory(source.capacity);
+
+			if (source.count > 0)
+			{
+				count = source.count;
+				memcpy(data, source.data, sizeof(int) * source.count);
+			}
+
+			return *this;
+		}
+
 		Array(Array&& source) { }
 		Array& operator=(Array&& source) { }
 
@@ -51,10 +78,9 @@ namespace hstl
 			}
 
 			auto new_data = new int[_capacity];
-
 			if (data && count > 0)
 			{
-				memcpy(new_data, data, sizeof(int) * count /*in bytes*/);
+				memcpy(new_data, data, sizeof(int) * count);
 			}
 			delete[] data;
 
