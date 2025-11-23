@@ -4,6 +4,7 @@
 #include <unordered_map>
 #include <cstdint>
 #include <assert.h>
+#include <cstddef>
 
 #include <Json_Value.h>
 #include <Result.h>
@@ -66,10 +67,32 @@ auto sum(T first, Args... args)
 	return result;
 }
 
+struct Point
+{
+	int32_t x;
+	int32_t y;
+	int32_t z;
+};
+
 int main()
 {
 	std::vector<int> v{10, 10, 10, 10, 10, 10};
 	v.resize(2);
+
+	int xx = 1;
+	auto yy = ++xx;
+	auto zz = xx++;
+
+	short x = 1;
+	auto y = +x;
+
+	std::byte data[1024]{};
+	void* p = data;
+	int* pp = (int*)p;
+	*pp = 1;
+
+	void* memory = malloc(1024);
+	Point* p0 = new(memory) Point{};
 
 	hstl::Array a;
 	a.resize(200);
