@@ -37,7 +37,7 @@ namespace hstl
 				return *this;
 			}
 
-			// FIXME: Will make a redundunt memcpy
+			// NOTE: Will make a redundunt memcpy
 			grow_memory(source.capacity);
 
 			if (source.count > 0)
@@ -111,8 +111,27 @@ namespace hstl
 			count = new_count;
 		}
 
-		bool resize_with_value(size_t size, int value) { }
-		bool push(int value) { }
+		void resize_with_value(size_t _count, int value)
+		{
+			auto old_count = count;
+
+			resize(_count);
+
+			// Grow
+			if (old_count < count)
+			{
+				for (size_t i = old_count; i < count; ++i)
+				{
+					data[i] = value;
+				}
+			}
+		}
+
+		int* push(int value)
+		{
+			
+		}
+
 		bool shrink_to_fit() { }
 		bool remove(size_t index) { }
 		bool remove_ordered(size_t index) { }
