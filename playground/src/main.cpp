@@ -74,6 +74,21 @@ struct Point
 	int32_t z;
 };
 
+class A
+{
+public:
+	A() = default;
+
+	A(int a):
+		a{a}
+	{
+	
+	}
+
+private:
+	int a;
+};
+
 int main()
 {
 	std::vector<int> v{10, 10, 10, 10, 10, 10};
@@ -94,10 +109,14 @@ int main()
 	void* memory = malloc(1024);
 	Point* p0 = new(memory) Point{};
 
-	hstl::Array a;
-	a.resize(200);
-	a.resize(100);
-	a.resize(300);
+	A* dataa = new A[100];
+	new (&dataa[0]) A{1};
+	new (&dataa[1]) A{2};
+	new (&dataa[2]) A{3};
+	new (&dataa[3]) A{4};
+
+	A* dataa_2 = new A[100];
+	memcpy(dataa_2, dataa, sizeof(A) * 100);
 
 	std::string json = R"({
         "name": "Alice",

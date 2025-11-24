@@ -4,19 +4,36 @@
 #include <type_traits>
 #include <exception>
 #include <stdexcept>
+#include <memory>
+#include <algorithm>
 
 namespace hstl
 {
+	template<typename T>
 	class Array
 	{
 	public:
 		Array() = default;
 
-		Array(size_t _count):
-			count{_count}
+		Array(size_t _count)
 		{
+			static_assert(std::is_default_constructible_v<T>, "T must have a default constructor");
+
 			grow_memory(_count);
-			memset(data, 0, sizeof(int) * count);
+
+			if constexpr (std::is_trivially_default_constructible_v<T> &&
+						  std::is_trivially_copyable_v<T> &&
+						  std::is_trivially_destructible_v<T> &&
+						  std::is_trivially_move_constructible_v<T>)
+			{
+				memset(data, 0, sizeof(T) * count);
+			}
+			else
+			{
+				std::uninitialized_default_construct_n(data, count);
+			}
+
+			count = _count;
 		}
 
 		Array(const Array& source):
@@ -148,12 +165,23 @@ namespace hstl
 				return;
 			}
 
-			auto new_data = new int[_capacity];
+			T* new_data = static_cast<T*>(::operator new(sizeof(T) * _capacity));
+
 			if (data && count > 0)
 			{
-				memcpy(new_data, data, sizeof(int) * count);
+				if constexpr (std::is_trivially_copyable_v<T> == true)
+				{
+					memcpy(new_data, data, sizeof(T) * count);
+				}
+				else
+				{
+					// FIXME: If this throws we will leak "new_data"
+					std::uninitialized_copy_n(data, count, new_data);
+				}
 			}
-			delete[] data;
+
+			std::destroy_n(data, count);
+			::operator delete(data);
 
 			data = new_data;
 			capacity = _capacity;
@@ -166,19 +194,33 @@ namespace hstl
 				return;
 			}
 
-			auto new_data = new int[_capacity];
-			if (data && count > 0u)
+			T* new_data = static_cast<T*>(::operator new(sizeof(T) * _capacity));
+
+			size_t new_count = std::min(count, _capacity);
+
+			if (data && new_count > 0u)
 			{
-				memcpy(new_data, data, sizeof(int) * std::min(_capacity, count));
+				if constexpr (std::is_trivially_copyable_v<T> == true)
+				{
+					memcpy(new_data, data, sizeof(T) * new_count);
+				}
+				else
+				{
+					// FIXME: If this throws we will leak "new_data"
+					std::uninitialized_copy_n(data, new_count, new_data);
+				}
 			}
-			delete[] data;
+
+			std::destroy_n(data, count);
+			::operator delete(data);
 
 			data = new_data;
 			capacity = _capacity;
+			count = new_count;
 		}
 
 	private:
-		int* data{nullptr};
+		T* data{nullptr};
 		size_t count{0u};
 		size_t capacity{0u};
 	};
