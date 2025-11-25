@@ -17,21 +17,11 @@ namespace hstl
 
 		Array(size_t _count)
 		{
-			static_assert(std::is_default_constructible_v<T>, "T must have a default constructor");
+			static_assert(std::is_trivially_destructible_v<T>, "T must have a default constructor");
 
 			grow_memory(_count);
 
-			if constexpr (std::is_trivially_default_constructible_v<T> &&
-						  std::is_trivially_copyable_v<T> &&
-						  std::is_trivially_destructible_v<T> &&
-						  std::is_trivially_move_constructible_v<T>)
-			{
-				memset(data, 0, sizeof(T) * count);
-			}
-			else
-			{
-				std::uninitialized_default_construct_n(data, count);
-			}
+			uninitialized_value_construct_range(data, count);
 
 			count = _count;
 		}
@@ -117,14 +107,13 @@ namespace hstl
 		void reserve(size_t _capacity)
 		{
 			grow_memory(_capacity);
+
 		}
 
 		void resize(size_t new_count)
 		{
-			if (new_count <= count)
+			if (new_count == count)
 			{
-				// TODO: Call destructors for non-primitive types
-				count = new_count;
 				return;
 			}
 
@@ -133,8 +122,14 @@ namespace hstl
 				grow_memory(new_count);
 			}
 
-			// TODO: Call constructors for non-primitive types
-			memset(data + count, 0, sizeof(int) * (new_count - count));
+			if (new_count > count)
+			{
+				uninitialized_value_construct_range(data + count, new_count - count);
+			}
+			else
+			{
+				std::destroy_n(data + new_count, count - new_count);
+			}
 
 			count = new_count;
 		}
@@ -214,6 +209,18 @@ namespace hstl
 			else
 			{
 				std::uninitialized_copy_n(src, count, dst);
+			}
+		}
+
+		void uninitialized_value_construct_range(T* start, size_t count)
+		{
+			if constexpr (std::is_fundamental_v<T> == true)
+			{
+				memset(start, 0, sizeof(T) * count);
+			}
+			else
+			{
+				std::uninitialized_value_construct_n(start, count);
 			}
 		}
 
