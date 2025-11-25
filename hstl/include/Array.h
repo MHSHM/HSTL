@@ -92,7 +92,8 @@ namespace hstl
 				return *this;
 			}
 
-			delete[] data;
+			std::destroy_n(data, count);
+			::operator delete(data);
 
 			data = source.data;
 			count = source.count;
@@ -107,7 +108,8 @@ namespace hstl
 
 		~Array() noexcept
 		{
-			delete[] data;
+			std::destroy_n(data, count);
+			::operator delete(data);
 		}
 
 	public:
@@ -135,22 +137,6 @@ namespace hstl
 			memset(data + count, 0, sizeof(int) * (new_count - count));
 
 			count = new_count;
-		}
-
-		void resize_with_value(size_t _count, int value)
-		{
-			auto old_count = count;
-
-			resize(_count);
-
-			// Grow
-			if (old_count < count)
-			{
-				for (size_t i = old_count; i < count; ++i)
-				{
-					data[i] = value;
-				}
-			}
 		}
 
 		int* push(int value)
