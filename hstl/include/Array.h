@@ -134,9 +134,34 @@ namespace hstl
 			count = new_count;
 		}
 
-		int* push(int value)
+		T& push(const T& element)
 		{
-			
+			if (count == capacity)
+			{
+				grow_memory(capacity == 0u ? 10u : capacity * 2u);
+			}
+
+			new(&data[count++]) T(element);
+
+			return data[count - 1];
+		}
+
+		T& push(T&& element)
+		{
+			if (count == capacity)
+			{
+				grow_memory(capacity == 0u ? 10u : capacity * 2u);
+			}
+
+			new(&data[count++]) T(std::move(element));
+
+			return data[count - 1];
+		}
+
+		template<typename... Args> 
+		T& emplace(Args&&... args)
+		{
+
 		}
 
 		bool shrink_to_fit() { }

@@ -94,6 +94,13 @@ int main()
 	std::vector<int> v{10, 10, 10, 10, 10, 10};
 	v.resize(2);
 
+	hstl::Array<int> integers;
+	integers.push(1);
+	integers.push(2);
+	integers.push(3);
+	integers.push(4);
+	integers.push(5);
+
 	int xx = 1;
 	auto yy = ++xx;
 	auto zz = xx++;
