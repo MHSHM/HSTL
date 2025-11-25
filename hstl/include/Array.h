@@ -37,13 +37,14 @@ namespace hstl
 		}
 
 		Array(const Array& source):
-			data{new int[source.capacity]},
+			data{static_cast<T*>(::operator new(source.capacity * sizeof(T)))},
 			count{source.count},
 			capacity{source.capacity}
 		{
-			if (source.count > 0)
+			if (source.count > 0u)
 			{
-				memcpy(data, source.data, sizeof(int) * count);
+				// FIXME: If this throws we will leak "data"
+				uninitialized_copy_range(source.data, source.count, data);
 			}
 		}
 
@@ -54,15 +55,23 @@ namespace hstl
 				return *this;
 			}
 
-			// NOTE: Will make a redundunt memcpy
-			grow_memory(source.capacity);
+			if (capacity < source.count)
+			{
+				grow_memory(source.count, true);
+			}
+			else
+			{
+				std::destroy_n(data, count);
+				count = 0;
+			}
 
 			if (source.count > 0)
 			{
-				count = source.count;
-				memcpy(data, source.data, sizeof(int) * source.count);
+				// FIXME: If this throws we will leak "data"
+				uninitialized_copy_range(source.data, source.count, data);
 			}
 
+			count = source.count;
 			return *this;
 		}
 
@@ -158,7 +167,7 @@ namespace hstl
 		bool clear() noexcept { }
 
 	private:
-		void grow_memory(size_t _capacity)
+		void grow_memory(size_t _capacity, bool discard_old_data = false)
 		{
 			if (_capacity <= capacity)
 			{
@@ -167,17 +176,10 @@ namespace hstl
 
 			T* new_data = static_cast<T*>(::operator new(sizeof(T) * _capacity));
 
-			if (data && count > 0)
+			if (data && count > 0 && discard_old_data == false)
 			{
-				if constexpr (std::is_trivially_copyable_v<T> == true)
-				{
-					memcpy(new_data, data, sizeof(T) * count);
-				}
-				else
-				{
-					// FIXME: If this throws we will leak "new_data"
-					std::uninitialized_copy_n(data, count, new_data);
-				}
+				// FIXME: If this throws we will leak "new_data"
+				uninitialized_copy_range(data, count, new_data);
 			}
 
 			std::destroy_n(data, count);
@@ -185,6 +187,11 @@ namespace hstl
 
 			data = new_data;
 			capacity = _capacity;
+
+			if (discard_old_data == true)
+			{
+				count = 0u;
+			}
 		}
 
 		void shrink_memory(size_t _capacity)
@@ -200,15 +207,8 @@ namespace hstl
 
 			if (data && new_count > 0u)
 			{
-				if constexpr (std::is_trivially_copyable_v<T> == true)
-				{
-					memcpy(new_data, data, sizeof(T) * new_count);
-				}
-				else
-				{
-					// FIXME: If this throws we will leak "new_data"
-					std::uninitialized_copy_n(data, new_count, new_data);
-				}
+				// FIXME: If this throws we will leak "new_data"
+				uninitialized_copy_range(data, new_count, new_data);
 			}
 
 			std::destroy_n(data, count);
@@ -217,6 +217,18 @@ namespace hstl
 			data = new_data;
 			capacity = _capacity;
 			count = new_count;
+		}
+
+		void uninitialized_copy_range(T* src, size_t count, T* dst)
+		{
+			if constexpr (std::is_trivially_copyable_v<T> == true)
+			{
+				memcpy(dst, src, sizeof(T) * count);
+			}
+			else
+			{
+				std::uninitialized_copy_n(src, count, dst);
+			}
 		}
 
 	private:
