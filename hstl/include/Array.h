@@ -186,12 +186,22 @@ namespace hstl
 		bool remove_ordered(size_t index) { }
 		void remove_if() { }
 
-		T* begin() const noexcept
+		const T* begin() const noexcept
 		{
 			return data;
 		}
 
-		T* end() const noexcept
+		const T* end() const noexcept
+		{
+			return data + count;
+		}
+
+		T* begin() noexcept
+		{
+			return data;
+		}
+
+		T* end() noexcept
 		{
 			return data + count;
 		}
