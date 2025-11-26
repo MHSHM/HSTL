@@ -188,12 +188,12 @@ namespace hstl
 
 		T* begin() const noexcept
 		{
-		
+			return data;
 		}
 
 		T* end() const noexcept
 		{
-		
+			return data + count;
 		}
 
 		void clear() noexcept
