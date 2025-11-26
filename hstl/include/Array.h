@@ -17,8 +17,6 @@ namespace hstl
 
 		Array(size_t _count)
 		{
-			static_assert(std::is_trivially_destructible_v<T>, "T must have a default constructor");
-
 			grow_memory(_count);
 
 			uninitialized_value_construct_range(data, count);
@@ -51,7 +49,11 @@ namespace hstl
 			}
 			else
 			{
-				std::destroy_n(data, count);
+				if constexpr (std::is_trivially_destructible_v<T> == false)
+				{
+					std::destroy_n(data, count);
+				}
+
 				count = 0;
 			}
 
@@ -82,7 +84,10 @@ namespace hstl
 				return *this;
 			}
 
-			std::destroy_n(data, count);
+			if constexpr (std::is_trivially_destructible_v<T> == false)
+			{
+				std::destroy_n(data, count);
+			}
 			::operator delete(data);
 
 			data = source.data;
@@ -98,7 +103,10 @@ namespace hstl
 
 		~Array() noexcept
 		{
-			std::destroy_n(data, count);
+			if constexpr (std::is_trivially_destructible_v<T> == false)
+			{
+				std::destroy_n(data, count);
+			}
 			::operator delete(data);
 		}
 
@@ -127,7 +135,10 @@ namespace hstl
 			}
 			else
 			{
-				std::destroy_n(data + new_count, count - new_count);
+				if constexpr (std::is_trivially_destructible_v<T> == false)
+				{
+					std::destroy_n(data + new_count, count - new_count);
+				}
 			}
 
 			count = new_count;
@@ -174,9 +185,26 @@ namespace hstl
 		bool remove(size_t index) { }
 		bool remove_ordered(size_t index) { }
 		void remove_if() { }
-		int* begin() const noexcept { }
-		int* end() const noexcept { }
-		bool clear() noexcept { }
+
+		T* begin() const noexcept
+		{
+		
+		}
+
+		T* end() const noexcept
+		{
+		
+		}
+
+		void clear() noexcept
+		{
+			if constexpr (std::is_trivially_destructible_v<T> == false)
+			{
+				std::destroy_n(data, count);
+			}
+
+			count = 0;
+		}
 
 	private:
 		void grow_memory(size_t _capacity, bool discard_old_data = false)
@@ -194,7 +222,10 @@ namespace hstl
 				uninitialized_copy_range(data, count, new_data);
 			}
 
-			std::destroy_n(data, count);
+			if constexpr (std::is_trivially_destructible_v<T> == false)
+			{
+				std::destroy_n(data, count);
+			}
 			::operator delete(data);
 
 			data = new_data;
@@ -223,7 +254,11 @@ namespace hstl
 				uninitialized_copy_range(data, new_count, new_data);
 			}
 
-			std::destroy_n(data, count);
+			if constexpr (std::is_trivially_destructible_v<T> == false)
+			{
+				std::destroy_n(data, count);
+			}
+
 			::operator delete(data);
 
 			data = new_data;

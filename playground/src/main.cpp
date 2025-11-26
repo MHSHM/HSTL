@@ -125,10 +125,31 @@ private:
 	std::string c;
 };
 
+template<typename T>
+auto value_of(const T& v)
+{
+	if constexpr (std::is_pointer_v<T>)
+	{
+		if (v == nullptr)
+		{
+			throw std::runtime_error{"Null pointer dereference"};
+		}
+
+		return *v;
+	}
+	else
+	{
+		return v;
+	}
+}
+
 int main()
 {
 	std::vector<int> v{10, 10, 10, 10, 10, 10};
 	v.resize(2);
+
+	int* ppp = nullptr;
+	value_of(ppp);
 
 	Tuple<int, std::string> t{42, "yo"};
 
