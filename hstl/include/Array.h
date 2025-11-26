@@ -107,7 +107,6 @@ namespace hstl
 		void reserve(size_t _capacity)
 		{
 			grow_memory(_capacity);
-
 		}
 
 		void resize(size_t new_count)
@@ -158,7 +157,7 @@ namespace hstl
 			return data[count - 1];
 		}
 
-		template<typename... Args> 
+		template<typename... Args>
 		T& emplace(Args&&... args)
 		{
 

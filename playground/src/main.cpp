@@ -89,17 +89,40 @@ private:
 	int a;
 };
 
+template<typename... Ts>
+struct Tuple;
+
+template<>
+struct Tuple<> {};
+
+template<typename Head, typename... Tail>
+struct Tuple<Head, Tail...>
+{
+	Head head;
+	Tuple<Tail...> tail;
+
+	template<typename H, typename... T>
+	Tuple(H&& h, T&&... t):
+		head{std::forward<H>(h)},
+		tail{std::forward<T>(t)...}
+	{
+		
+	}
+};
+
 int main()
 {
 	std::vector<int> v{10, 10, 10, 10, 10, 10};
 	v.resize(2);
 
-	hstl::Array<int> integers;
-	integers.push(1);
-	integers.push(2);
-	integers.push(3);
-	integers.push(4);
-	integers.push(5);
+	Tuple<int, std::string> t{42, "yo"};
+
+	{
+		using Int_Array = hstl::Array<int>;
+
+		Int_Array integers;
+		integers.resize(100);
+	}
 
 	int xx = 1;
 	auto yy = ++xx;
