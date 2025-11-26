@@ -110,6 +110,21 @@ struct Tuple<Head, Tail...>
 	}
 };
 
+class Test
+{
+public:
+	Test(int a, double b, std::string c):
+		a{a},
+		b{b},
+		c{c}
+	{}
+
+private:
+	int a;
+	double b;
+	std::string c;
+};
+
 int main()
 {
 	std::vector<int> v{10, 10, 10, 10, 10, 10};
@@ -117,12 +132,10 @@ int main()
 
 	Tuple<int, std::string> t{42, "yo"};
 
-	{
-		using Int_Array = hstl::Array<int>;
-
-		Int_Array integers;
-		integers.resize(100);
-	}
+	hstl::Array<Test> tests;
+	auto a = tests.emplace(1, 1.0, "this is 1");
+	auto b = tests.emplace(2, 2.0, "this is 2");
+	auto c = tests.emplace(3, 3.0, "this is 3");
 
 	int xx = 1;
 	auto yy = ++xx;

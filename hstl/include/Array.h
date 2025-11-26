@@ -160,7 +160,14 @@ namespace hstl
 		template<typename... Args>
 		T& emplace(Args&&... args)
 		{
+			if (count == capacity)
+			{
+				grow_memory(capacity == 0u ? 10u : capacity * 2u);
+			}
 
+			new (&data[count++]) T(std::forward<Args>(args)...);
+
+			return data[count - 1];
 		}
 
 		bool shrink_to_fit() { }
