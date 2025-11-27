@@ -181,10 +181,99 @@ namespace hstl
 			return data[count - 1];
 		}
 
-		bool shrink_to_fit() { }
-		bool remove(size_t index) { }
-		bool remove_ordered(size_t index) { }
-		void remove_if() { }
+		void shrink_to_fit()
+		{
+			if (capacity > count)
+			{
+				shrink_memory(count);
+			}
+		}
+
+		void remove(size_t index)
+		{
+			if (index >= count)
+			{
+				throw std::out_of_range{"The index provided is out of range"};
+			}
+
+			std::swap(data[index], data[count - 1]);
+
+			if constexpr (std::is_trivially_destructible_v<T> ==  false)
+			{
+				std::destroy_at(&data[count - 1]);
+			}
+
+			count--;
+		}
+
+		void remove_ordered(size_t index)
+		{
+			if (index >= count)
+			{
+				throw std::out_of_range{"The index provided is out of range"};
+			}
+
+			if constexpr (std::is_trivially_destructible_v<T> ==  false)
+			{
+				std::destroy_at(&data[index]);
+			}
+
+			for (size_t i = index; i < count - 1; ++i)
+			{
+				data[i] = data[i + 1];
+			}
+
+			count--;
+		}
+
+		template<typename F>
+		void remove_if(F f)
+		{
+			// NOTE: This type trait will check if the result of F is __convertable__ to bool
+			// I'm not sure if this is desired but roll with it for now
+			static_assert(std::is_invocable_r_v<bool, F, const T&>, "Predicate must be callable as bool(const T&)");
+			if (count == 0)
+				return;
+
+			// FIXME: int64_t here is a narrowing conversion used to avoid underflow
+			int64_t last_survivior = count - 1;
+			for (int64_t i = count - 1; i >= 0; --i)
+			{
+				if (f(data[i]) == false)
+					continue;
+
+				if(last_survivior != i)
+				{
+					if constexpr (std::is_trivially_copyable_v<T> == true)
+					{
+						memcpy(&data[i], &data[last_survivior], sizeof(T));
+					}
+					else
+					{
+						if constexpr (std::is_trivially_destructible_v<T> == false)
+						{
+							std::destroy_at(&data[i]);
+						}
+
+						::new(&data[i]) T{std::move(data[last_survivior])};
+
+						if constexpr (std::is_trivially_destructible_v<T> == false)
+						{
+							std::destroy_at(&data[last_survivior]);
+						}
+					}
+				}
+				else
+				{
+					if constexpr (std::is_trivially_destructible_v<T> == false)
+					{
+						std::destroy_at(&data[i]);
+					}
+				}
+				last_survivior--;
+			}
+			count = last_survivior + 1;
+		}
 
 		const T* begin() const noexcept
 		{
@@ -290,7 +379,7 @@ namespace hstl
 
 		void uninitialized_value_construct_range(T* start, size_t count)
 		{
-			if constexpr (std::is_fundamental_v<T> == true)
+			if constexpr (std::is_trivially_default_constructible_v<T> == true)
 			{
 				memset(start, 0, sizeof(T) * count);
 			}

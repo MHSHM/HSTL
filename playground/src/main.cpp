@@ -143,20 +143,52 @@ auto value_of(const T& v)
 	}
 }
 
+struct Tracer {
+	static inline int alive = 0;
+	int id{};
+	Tracer(int i):
+		id(i)
+	{
+		++alive;
+	}
+
+	Tracer(const Tracer& o):
+		id(o.id)
+	{
+		++alive;
+	}
+
+	~Tracer()
+	{
+		--alive;
+	}
+};
+
 int main()
 {
 	std::vector<int> v{10, 10, 10, 10, 10, 10};
 	v.resize(2);
 
-	int* ppp = nullptr;
-	value_of(ppp);
+	hstl::Array<Tracer> tracers;
+	tracers.emplace(0);
+	tracers.emplace(1);
+	tracers.emplace(2);
+	tracers.emplace(3);
+	tracers.emplace(4);
 
-	Tuple<int, std::string> t{42, "yo"};
+	tracers.remove_if([](const Tracer& tracer) {
+		if (tracer.id == 1 || tracer.id == 4)
+		{
+			return true;
+		}
 
-	hstl::Array<Test> tests;
-	auto a = tests.emplace(1, 1.0, "this is 1");
-	auto b = tests.emplace(2, 2.0, "this is 2");
-	auto c = tests.emplace(3, 3.0, "this is 3");
+		return false;
+	});
+
+	for (const auto& tracer : tracers)
+	{
+		std::cout << tracer.id << '\n';
+	}
 
 	int xx = 1;
 	auto yy = ++xx;
@@ -195,20 +227,10 @@ int main()
 
 	while (auto token = lexer.next())
 	{
-		std::cout << "Token type: " << _token_type_to_str(token.get_value().type) << '\n';
-		std::cout << "Token line: " << token.get_value().line << '\n';
-		std::cout << "Token payload: " << token.get_value().payload << "\n\n\n";
-
 		if (token.get_value().type == hstl::TOKEN_TYPE::END)
 		{
 			break;
 		}
-	}
-
-	{
-		DEFER{
-			std::cout << "out of scope\n";
-		};
 	}
 
 	return 0;
