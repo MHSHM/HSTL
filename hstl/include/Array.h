@@ -17,9 +17,11 @@ namespace hstl
 
 		Array(size_t _count)
 		{
+            ensure_type_traits();
+
 			grow_memory(_count);
 
-			uninitialized_value_construct_range(data, count);
+            uninitialized_value_construct_range(data, _count);
 
 			count = _count;
 		}
@@ -29,6 +31,8 @@ namespace hstl
 			count{source.count},
 			capacity{source.capacity}
 		{
+            ensure_type_traits();
+
 			if (source.count > 0u)
 			{
 				// FIXME: If this throws we will leak "data"
@@ -196,14 +200,23 @@ namespace hstl
 				throw std::out_of_range{"The index provided is out of range"};
 			}
 
-			std::swap(data[index], data[count - 1]);
+            if constexpr (std::is_trivially_copyable_v<T>)
+            {
+                data[index] = data[count - 1];
+            }
+            else
+            {
+                std::destroy_at(&data[index]);
 
-			if constexpr (std::is_trivially_destructible_v<T> ==  false)
-			{
-				std::destroy_at(&data[count - 1]);
-			}
+                if (index < count - 1)
+                {
+                    ::new(&data[index]) T{std::move(data[count - 1])};
 
-			count--;
+                    std::destroy_at(&data[count - 1]);
+                }
+            }
+
+            --count;
 		}
 
 		void remove_ordered(size_t index)
@@ -213,15 +226,21 @@ namespace hstl
 				throw std::out_of_range{"The index provided is out of range"};
 			}
 
-			if constexpr (std::is_trivially_destructible_v<T> ==  false)
-			{
-				std::destroy_at(&data[index]);
-			}
+            if constexpr (std::is_trivially_copyable_v<T>)
+            {
+                memmove(&data[index], &data[index + 1], sizeof(T) * (count - index - 1));
+            }
+            else
+            {
+                for (size_t i = index; i < count - 1; ++i)
+                {
+                    std::destroy_at(&data[i]);
 
-			for (size_t i = index; i < count - 1; ++i)
-			{
-				data[i] = data[i + 1];
-			}
+                    ::new(&data[i]) T{std::move(data[i + 1])};
+                }
+
+                std::destroy_at(&data[count - 1]);
+            }
 
 			count--;
 		}
@@ -306,6 +325,15 @@ namespace hstl
 		}
 
 	private:
+        void ensure_type_traits()
+        {
+            static_assert(std::is_default_constructible_v<T>, "T must have a default constructor");
+            static_assert(std::is_copy_constructible_v<T>, "T must have a copy constructor");
+            static_assert(std::is_copy_assignable_v<T>, "T must have a copy assignment operator");
+            static_assert(std::is_move_constructible_v<T>, "T must have a move constructor");
+            static_assert(std::is_move_assignable_v<T>, "T must have a move assignment operator");
+        }
+
 		void grow_memory(size_t _capacity, bool discard_old_data = false)
 		{
 			if (_capacity <= capacity)
@@ -318,7 +346,7 @@ namespace hstl
 			if (data && count > 0 && discard_old_data == false)
 			{
 				// FIXME: If this throws we will leak "new_data"
-				uninitialized_copy_range(data, count, new_data);
+				uninitialized_move_range(data, count, new_data);
 			}
 
 			if constexpr (std::is_trivially_destructible_v<T> == false)
@@ -350,7 +378,7 @@ namespace hstl
 			if (data && new_count > 0u)
 			{
 				// FIXME: If this throws we will leak "new_data"
-				uninitialized_copy_range(data, new_count, new_data);
+				uninitialized_move_range(data, new_count, new_data);
 			}
 
 			if constexpr (std::is_trivially_destructible_v<T> == false)
@@ -376,6 +404,18 @@ namespace hstl
 				std::uninitialized_copy_n(src, count, dst);
 			}
 		}
+
+        void uninitialized_move_range(T* src, size_t count, T* dst)
+        {
+            if constexpr (std::is_trivially_copyable_v<T> == true)
+            {
+                memcpy(dst, src, sizeof(T) * count);
+            }
+            else
+            {
+                std::uninitialized_move_n(src, count, dst);
+            }
+        }
 
 		void uninitialized_value_construct_range(T* start, size_t count)
 		{

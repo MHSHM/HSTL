@@ -146,6 +146,7 @@ auto value_of(const T& v)
 struct Tracer {
 	static inline int alive = 0;
 	int id{};
+	Tracer() = default;
 	Tracer(int i):
 		id(i)
 	{
@@ -209,11 +210,35 @@ struct EvenNumbersRange
 	int range_max;
 };
 
+template<typename T, typename... Args>
+constexpr T sum_of(T t, Args... args)
+{
+	return t + sum_of(args...);
+}
+
+template<typename T>
+constexpr T sum_of(T t)
+{
+	return t;
+}
+
 int main()
 {
-	std::vector<int> v;
-	for (int i = 0; i < 1000; ++i)
-		v.push_back(i);
+	hstl::Array<int> numbers;
+
+	for (int i = 0; i < 10; ++i)
+	{
+		numbers.push(i);
+	}
+
+	numbers.remove_ordered(0);
+	numbers.remove_ordered(3);
+	numbers.remove_ordered(4);
+
+	for (auto number : numbers)
+	{
+		std::cout << number << '\n';
+	}
 
 	return 0;
 }
