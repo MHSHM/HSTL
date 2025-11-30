@@ -164,74 +164,56 @@ struct Tracer {
 	}
 };
 
+struct EvenNumbersRangeIterator
+{
+	EvenNumbersRangeIterator(int value):
+		value{value} {}
+
+	bool operator!=(const EvenNumbersRangeIterator& other)
+	{
+		return other.value != value;
+	}
+
+	EvenNumbersRangeIterator& operator++()
+	{
+		value = value + 2;
+		return *this;
+	}
+
+	int operator*()
+	{
+		return value;
+	}
+
+	int value;
+};
+
+struct EvenNumbersRange
+{
+	EvenNumbersRange(int range_max):
+		range_max{range_max}
+	{
+
+	}
+
+	EvenNumbersRangeIterator begin()
+	{
+		return EvenNumbersRangeIterator{0};
+	}
+
+	EvenNumbersRangeIterator end()
+	{
+		return EvenNumbersRangeIterator{range_max % 2 != 0 ? range_max + 1 : range_max};
+	}
+
+	int range_max;
+};
+
 int main()
 {
-	std::vector<int> v{10, 10, 10, 10, 10, 10};
-	v.resize(2);
-
-	hstl::Array<Tracer> tracers;
-	tracers.emplace(0);
-	tracers.emplace(1);
-	tracers.emplace(2);
-	tracers.emplace(3);
-	tracers.emplace(4);
-
-	tracers.remove_if([](const Tracer& tracer) {
-		if (tracer.id == 1 || tracer.id == 4)
-		{
-			return true;
-		}
-
-		return false;
-	});
-
-	for (const auto& tracer : tracers)
-	{
-		std::cout << tracer.id << '\n';
-	}
-
-	int xx = 1;
-	auto yy = ++xx;
-	auto zz = xx++;
-
-	short x = 1;
-	auto y = +x;
-
-	std::byte data[1024]{};
-	void* p = data;
-	int* pp = (int*)p;
-	*pp = 1;
-
-	void* memory = malloc(1024);
-	Point* p0 = new(memory) Point{};
-
-	A* dataa = new A[100];
-	new (&dataa[0]) A{1};
-	new (&dataa[1]) A{2};
-	new (&dataa[2]) A{3};
-	new (&dataa[3]) A{4};
-
-	A* dataa_2 = new A[100];
-	memcpy(dataa_2, dataa, sizeof(A) * 100);
-
-	std::string json = R"({
-        "name": "Alice",
-        "active": true,
-        "deleted": false,
-        "age": 30,
-        "score": 99.0000,
-        "status": "ok"
-    })";
-
-	auto lexer = hstl::Lexer(json);
-
-	while (auto token = lexer.next())
-	{
-		if (token.get_value().type == hstl::TOKEN_TYPE::END)
-		{
-			break;
-		}
-	}
+	std::vector<int> v;
+	for (int i = 0; i < 1000; ++i)
+		v.push_back(i);
 
 	return 0;
 }
