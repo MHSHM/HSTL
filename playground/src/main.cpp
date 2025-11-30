@@ -222,9 +222,27 @@ constexpr T sum_of(T t)
 	return t;
 }
 
+template<typename Fn, typename In, typename Out>
+constexpr Out fold(Fn pred, In* in, size_t length, Out initial)
+{
+	for (size_t i = 0; i < length - 1; ++i)
+	{
+		initial += pred(in[i], in[i + 1]);
+	}
+
+	return initial;
+}
+
 int main()
 {
 	hstl::Array<int> numbers;
+
+	int data[]{ 100, 200, 300, 400, 500 };
+	size_t data_len = 5;
+
+	auto size_t = fold([](auto x, auto y) -> decltype(x + y) {
+		return x + y;
+	}, data, 5, 0);
 
 	for (int i = 0; i < 10; ++i)
 	{
