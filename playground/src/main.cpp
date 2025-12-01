@@ -11,6 +11,7 @@
 #include <Json_Reader.h>
 #include <Defer.h>
 #include <Array.h>
+#include <Str.h>
 
 hstl::Result<int> calc(int i)
 {
@@ -253,9 +254,25 @@ int main()
 	numbers.remove_ordered(3);
 	numbers.remove_ordered(4);
 
+	hstl::Str str{"Hello World!"};
+
+	for (auto ch : str)
+	{
+		std::cout << ch << '\n';
+	}
+
 	for (auto number : numbers)
 	{
 		std::cout << number << '\n';
+	}
+
+	std::string s = "Hello There!";
+
+	hstl::Str hs{s.c_str()};
+
+	for (auto ch : hs)
+	{
+		std::cout << ch << '\n';
 	}
 
 	return 0;

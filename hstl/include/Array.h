@@ -323,6 +323,33 @@ namespace hstl
 			count = 0;
 		}
 
+		const T* buffer() const { return data; }
+
+		T* buffer() { return data; }
+
+		const T& operator[](size_t index) const
+		{
+			if (index >= count)
+			{
+				throw std::out_of_range{"The index provided is out of range"};
+			}
+
+			return data[index];
+		}
+
+		T& operator[](size_t index)
+		{
+			if (index >= count)
+			{
+				throw std::out_of_range{"The index provided is out of range"};
+			}
+
+			return data[index];
+		}
+
+		// TODO: Rename to count
+		size_t size() const { return count; }
+
 	private:
         void ensure_type_traits()
         {
