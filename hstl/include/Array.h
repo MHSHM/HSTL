@@ -1,6 +1,5 @@
 #pragma once
 
-#include <cstring>
 #include <type_traits>
 #include <exception>
 #include <stdexcept>
@@ -17,11 +16,11 @@ namespace hstl
 
 		Array(size_t _count)
 		{
-            ensure_type_traits();
+			ensure_type_traits();
 
 			grow_memory(_count);
 
-            uninitialized_value_construct_range(data, _count);
+			uninitialized_value_construct_range(data, _count);
 
 			count = _count;
 		}
@@ -31,7 +30,7 @@ namespace hstl
 			count{source.count},
 			capacity{source.capacity}
 		{
-            ensure_type_traits();
+			ensure_type_traits();
 
 			if (source.count > 0u)
 			{
@@ -200,23 +199,23 @@ namespace hstl
 				throw std::out_of_range{"The index provided is out of range"};
 			}
 
-            if constexpr (std::is_trivially_copyable_v<T>)
-            {
-                data[index] = data[count - 1];
-            }
-            else
-            {
-                std::destroy_at(&data[index]);
+		    if constexpr (std::is_trivially_copyable_v<T>)
+		    {
+		        data[index] = data[count - 1];
+		    }
+		    else
+		    {
+		        std::destroy_at(&data[index]);
 
-                if (index < count - 1)
-                {
-                    ::new(&data[index]) T{std::move(data[count - 1])};
+		        if (index < count - 1)
+		        {
+		            ::new(&data[index]) T{std::move(data[count - 1])};
 
-                    std::destroy_at(&data[count - 1]);
-                }
-            }
+		            std::destroy_at(&data[count - 1]);
+		        }
+		    }
 
-            --count;
+		    --count;
 		}
 
 		void remove_ordered(size_t index)
