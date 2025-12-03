@@ -12,6 +12,9 @@ namespace hstl
 	class Array
 	{
 	public:
+		using iterator = T*;
+		using const_iterator = const T*;
+
 		Array() = default;
 
 		Array(size_t _count)
@@ -293,22 +296,22 @@ namespace hstl
 			count = last_survivior + 1;
 		}
 
-		const T* begin() const noexcept
+		const_iterator begin() const noexcept
 		{
 			return data;
 		}
 
-		const T* end() const noexcept
+		const_iterator end() const noexcept
 		{
 			return data + count;
 		}
 
-		T* begin() noexcept
+		iterator begin() noexcept
 		{
 			return data;
 		}
 
-		T* end() noexcept
+		iterator end() noexcept
 		{
 			return data + count;
 		}
