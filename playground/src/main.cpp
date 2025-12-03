@@ -255,25 +255,16 @@ int main()
 	numbers.remove_ordered(4);
 
 	hstl::Str str{"Hello World!"};
+	hstl::Str str1{'A', 100};
 
-	for (auto ch : str)
-	{
-		std::cout << ch << '\n';
-	}
+	hstl::Str empty;
+	empty.push('H');
+	empty.push('i');
+	empty.push(' ');
+	empty.push('T');
+	empty.push('h');
 
-	for (auto number : numbers)
-	{
-		std::cout << number << '\n';
-	}
-
-	std::string s = "Hello There!";
-
-	hstl::Str hs{s.c_str()};
-
-	for (auto ch : hs)
-	{
-		std::cout << ch << '\n';
-	}
+	hstl::Str test{nullptr};
 
 	return 0;
 }
