@@ -8,9 +8,13 @@
 
 namespace hstl
 {
+	class Str;
+
 	template<typename T>
 	class Array
 	{
+		friend class Str;
+
 	public:
 		using iterator = T*;
 		using const_iterator = const T*;
@@ -327,8 +331,6 @@ namespace hstl
 		}
 
 		const T* buffer() const { return data; }
-
-		T* buffer() { return data; }
 
 		const T& operator[](size_t index) const
 		{
