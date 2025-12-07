@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <assert.h>
 #include <cstddef>
+#include <memory>
 
 #include <Json_Value.h>
 #include <Result.h>
@@ -234,6 +235,14 @@ constexpr Out fold(Fn pred, In* in, size_t length, Out initial)
 	return initial;
 }
 
+template<typename T, typename... Args>
+std::unique_ptr<T> make_unique_ptr(Args&&... args)
+{
+	auto ptr = std::unique_ptr<T>(new T{std::forward<Args>(args)...});
+
+	return ptr;
+}
+
 int main()
 {
 	hstl::Array<int> numbers;
@@ -262,6 +271,27 @@ int main()
 	auto substr0 = empty.push(" World!");
 
 	auto view = empty.view();
+
+	std::unique_ptr<int> int_ptr{new int};
+
+	auto deleter = [](hstl::Str* str)
+	{
+		std::cout << "Deleting hstl::Str\n";
+		delete str;
+	};
+
+	auto my_deleter = [](int* x) {
+		printf("Deleting an int at %p.", x);
+		delete x;
+	};
+	std::unique_ptr<int, decltype(my_deleter)> my_up{ new int, my_deleter};
+
+	hstl::Str_View h = "hello world";
+	hstl::Str_View hh = "hello world";
+
+	auto found = h.find("llo");
+
+	bool res = (h == hh);
 
 	return 0;
 }

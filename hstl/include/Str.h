@@ -8,9 +8,18 @@ namespace hstl
 	class Str_View
 	{
 	public:
+		static constexpr size_t npos = static_cast<size_t>(-1);
+
 		Str_View(const char* _data, size_t _count):
 			_data{_data},
 			_count{_count}
+		{
+
+		}
+
+		Str_View(const char* c_str):
+		_data{c_str},
+		_count{c_str ? std::strlen(c_str) : 0u}
 		{
 
 		}
@@ -36,21 +45,85 @@ namespace hstl
 			return _data[index];
 		}
 
-		size_t find(const char* substr) const
+		// assumes that c_str in a null-terminated string
+		Str_View& operator=(const char* c_str)
 		{
+			_data = c_str;
+			_count = c_str ? std::strlen(c_str) : 0u;
 
+			return *this;
 		}
 
-		// TODO: Implement useful functionality
+		bool operator==(const Str_View& view) const
+		{
+			if (view.count() != _count)
+			{
+				return false;
+			}
+
+			int res = memcmp(_data, view.data(), sizeof(char) * _count);
+
+			if (res == 0)
+			{
+				return true;
+			}
+
+			return false;
+		}
+
+		size_t find(const char* substr) const
+		{
+			if (substr == nullptr)
+			{
+				return npos;
+			}
+
+			size_t to_be_found_count = std::strlen(substr);
+
+			if (to_be_found_count == 0u)
+			{
+				return 0;
+			}
+
+			if (to_be_found_count != _count)
+			{
+				return npos;
+			}
+
+			size_t index = 0;
+
+			while (_count - index >= to_be_found_count)
+			{
+				int res = memcmp(_data + index, substr, sizeof(char) * to_be_found_count);
+
+				if (res == 0)
+				{
+					return index;
+				}
+
+				++index;
+			}
+
+			return npos;
+		}
+
+		/*
+			TODO:
+				substr(size_t pos, size_t len = npos)
+				starts_with(Str_View prefix)
+				ends_with(Str_View suffix)
+		*/
 
 	private:
-		const char* _data;
-		size_t _count;
+		const char* _data{nullptr};
+		size_t _count{0u};
 	};
 
 	class Str
 	{
 	public:
+		static constexpr size_t npos = static_cast<size_t>(-1);
+
 		Str()
 		{
 			init_empty_string();
@@ -189,10 +262,18 @@ namespace hstl
 
 		// Will make a read-only view of the string, any modifications to the source string
 		// can cause the view to be invalid
-		Str_View view()
+		Str_View view() const
 		{
 			return Str_View{data.data, data.count - 1u};
 		}
+
+		/* TODO:
+			operator+=(char)
+			operator+=(const char*)
+			insert(size_t pos, const char*)
+			insert(size_t pos, char)
+			erase(size_t pos, size_t len = npos)
+		*/
 
 	private:
 		void init_empty_string()
