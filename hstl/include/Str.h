@@ -107,6 +107,58 @@ namespace hstl
 			return npos;
 		}
 
+		Str_View substr(size_t pos, size_t length) const
+		{
+			if (pos > _count)
+			{
+				throw std::out_of_range{"pos is out of range"};
+			}
+
+			size_t remaining = _count - pos;
+
+			if (length > remaining)
+			{
+				throw std::out_of_range{"length exceeds the string boundaries"};
+			}
+
+			return {_data + pos, length};
+		}
+
+		// Expects a null-terminated string
+		bool starts_with(const char* prefix) const
+		{
+			if (prefix == nullptr)
+			{
+				return false;
+			}
+
+			auto length = strlen(prefix);
+
+			if (length > _count)
+			{
+				return false;
+			}
+
+			return memcmp(_data, prefix, sizeof(char) * length) == 0;
+		}
+
+		bool starts_with(const Str_View& prefix) const
+		{
+			if (prefix.data() == nullptr)
+			{
+				return false;
+			}
+
+			auto length = prefix.count();
+
+			if (length > _count)
+			{
+				return false;
+			}
+
+			return memcmp(_data, prefix.data(), sizeof(char) * length) == 0;
+		}
+
 		/*
 			TODO:
 				substr(size_t pos, size_t len = npos)
@@ -265,6 +317,22 @@ namespace hstl
 		Str_View view() const
 		{
 			return Str_View{data.data, data.count - 1u};
+		}
+
+		size_t find(const char* substr) const
+		{
+			return view().find(substr);
+		}
+
+		bool starts_with(const char* prefix) const
+		{
+			return view().starts_with(prefix);
+		}
+
+
+		bool starts_with(const Str_View& prefix) const
+		{
+			return view().starts_with(prefix);
 		}
 
 		/* TODO:
