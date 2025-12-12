@@ -293,5 +293,9 @@ int main()
 
 	bool res = (h == hh);
 
+	hstl::Str s = "Hello";
+
+	s.insert("HHHH", 1);
+
 	return 0;
 }

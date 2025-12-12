@@ -14,14 +14,22 @@ namespace hstl
 			_data{_data},
 			_count{_count}
 		{
-
+			if (_data == nullptr || _count == 0)
+			{
+				throw std::invalid_argument{"an invalid argument was provided"};
+			}
 		}
 
 		Str_View(const char* c_str):
 		_data{c_str},
-		_count{c_str ? std::strlen(c_str) : 0u}
+		_count{0u}
 		{
+			if (_data == nullptr)
+			{
+				throw std::invalid_argument{"c_str can't be a nullptr"};
+			}
 
+			_count = strlen(c_str);
 		}
 
 	public:
@@ -71,6 +79,22 @@ namespace hstl
 			return false;
 		}
 
+		// Will return the first occurence of the provided character
+		size_t find(char ch) const
+		{
+			const void* location = memchr(_data, static_cast<unsigned char>(ch), _count);
+
+			if (location == nullptr)
+			{
+				return npos;
+			}
+
+			return static_cast<size_t>(static_cast<const char*>(location) - _data);
+		}
+
+		// Will return the first occurence of the provided substr maybe we should have find_last
+		// TODO: Implement a better matching algo Current complexity is O(N * M)
+		// where N is the size of the string and M is the size of the view
 		size_t find(const char* substr) const
 		{
 			if (substr == nullptr)
@@ -85,7 +109,7 @@ namespace hstl
 				return 0;
 			}
 
-			if (to_be_found_count != _count)
+			if (to_be_found_count > _count)
 			{
 				return npos;
 			}
@@ -159,12 +183,40 @@ namespace hstl
 			return memcmp(_data, prefix.data(), sizeof(char) * length) == 0;
 		}
 
-		/*
-			TODO:
-				substr(size_t pos, size_t len = npos)
-				starts_with(Str_View prefix)
-				ends_with(Str_View suffix)
-		*/
+		// Expects a null-terminated string
+		bool ends_with(const char* suffix) const
+		{
+			if (suffix == nullptr)
+			{
+				return false;
+			}
+
+			auto length = strlen(suffix);
+
+			if (length > _count)
+			{
+				return false;
+			}
+
+			return memcmp(_data + (_count - length), suffix, sizeof(char) * length) == 0;
+		}
+
+		bool ends_with(const Str_View& suffix) const
+		{
+			if (suffix.data() == nullptr)
+			{
+				return false;
+			}
+
+			auto length = suffix.count();
+
+			if (length > _count)
+			{
+				return false;
+			}
+
+			return memcmp(_data + (_count - length), suffix.data(), sizeof(char) * length) == 0;
+		}
 
 	private:
 		const char* _data{nullptr};
@@ -219,7 +271,7 @@ namespace hstl
 		~Str() = default;
 
 	public:
-		char& push(const char& ch)
+		char& push(char ch)
 		{
 			data.push(ch);
 
@@ -232,6 +284,11 @@ namespace hstl
 
 		Str_View push(const char* str)
 		{
+			if (str == nullptr)
+			{
+				return Str_View{nullptr, 0};
+			}
+
 			size_t count = strlen(str);
 			size_t old_count = data.count;
 			size_t needed = old_count + count;
@@ -314,7 +371,7 @@ namespace hstl
 
 		// Will make a read-only view of the string, any modifications to the source string
 		// can cause the view to be invalid
-		Str_View view() const
+		const Str_View view() const
 		{
 			return Str_View{data.data, data.count - 1u};
 		}
@@ -335,13 +392,133 @@ namespace hstl
 			return view().starts_with(prefix);
 		}
 
-		/* TODO:
-			operator+=(char)
-			operator+=(const char*)
-			insert(size_t pos, const char*)
-			insert(size_t pos, char)
-			erase(size_t pos, size_t len = npos)
-		*/
+		Str& operator+=(char ch)
+		{
+			push(ch);
+			return *this;
+		}
+
+		Str& operator+=(const char* str)
+		{
+			push(str);
+			return *this;
+		}
+
+		char& operator[](size_t index)
+		{
+			if (data.count == 1)
+			{
+				throw std::out_of_range{"index is out of range"};
+			}
+
+			if (index > data.count - 2)
+			{
+				throw std::out_of_range{"index is out of range"};
+			}
+
+			return data[index];
+		}
+
+		const char& operator[](size_t index) const
+		{
+			if (data.count == 1)
+			{
+				throw std::out_of_range{"index is out of range"};
+			}
+
+			if (index > data.count - 2)
+			{
+				throw std::out_of_range{"index is out of range"};
+			}
+
+			return data[index];
+		}
+
+		// Will remove the first occurence if "all_occurences" was false
+		void remove(char ch, bool all_occurences = false)
+		{
+			auto str_view = view();
+			auto loc = str_view.find(ch);
+
+			if (all_occurences)
+			{
+				while (loc != npos)
+				{
+					data.remove_ordered(loc);
+
+					loc = view().find(ch);
+				}
+			}
+			else
+			{
+				if (loc != npos)
+				{
+					data.remove_ordered(loc);
+				}
+			}
+		}
+
+		// Will remove the first occurence
+		void remove(const char* substr)
+		{
+			if (substr == nullptr)
+			{
+				return;
+			}
+
+			auto str_view = view();
+			size_t length = strlen(substr);
+
+			if (length == 0u)
+			{
+				return;
+			}
+
+			size_t loc = str_view.find(substr);
+
+			if (loc != npos)
+			{
+				memmove(data.data + loc, data.data + (loc + length), data.count - (loc + length));
+				data.count -= length;
+			}
+		}
+
+		Str_View insert(const char* substr, size_t pos)
+		{
+			if (substr == nullptr)
+			{
+				// or should it be a no-op
+				throw std::invalid_argument{"substr is null"};
+			}
+
+			if (pos > data.count - 1)
+			{
+				throw std::out_of_range{"pos is out of range"};
+			}
+
+			auto str_length = strlen(substr);
+			auto required_size = data.count + str_length;
+
+			if (required_size > data.capacity)
+			{
+				data.reserve(required_size);
+			}
+
+			// make way
+			memmove(data.data + pos + str_length, data.data + pos, data.count - pos);
+
+			// put the new substr
+			memcpy(data.data + pos, substr, sizeof(char) * str_length);
+
+			data.count += str_length;
+
+			return Str_View{data.data + pos, str_length};
+		}
+
+		bool empty() const
+		{
+			return data.count == 1u;
+		}
 
 	private:
 		void init_empty_string()
