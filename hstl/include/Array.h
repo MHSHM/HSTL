@@ -33,9 +33,9 @@ namespace hstl
 		}
 
 		Array(const Array& source):
-			data{static_cast<T*>(::operator new(source.capacity * sizeof(T)))},
+			data{static_cast<T*>(::operator new(source._capacity * sizeof(T)))},
 			count{source.count},
-			capacity{source.capacity}
+			_capacity{source._capacity}
 		{
 			ensure_type_traits();
 
@@ -53,7 +53,7 @@ namespace hstl
 				return *this;
 			}
 
-			if (capacity < source.count)
+			if (_capacity < source.count)
 			{
 				grow_memory(source.count, true);
 			}
@@ -80,11 +80,11 @@ namespace hstl
 		Array(Array&& source) noexcept:
 			data{source.data},
 			count{source.count},
-			capacity{source.capacity}
+			_capacity{source._capacity}
 		{
 			source.data = nullptr;
 			source.count = 0u;
-			source.capacity = 0u;
+			source._capacity = 0u;
 		}
 
 		Array& operator=(Array&& source) noexcept
@@ -102,11 +102,11 @@ namespace hstl
 
 			data = source.data;
 			count = source.count;
-			capacity = source.capacity;
+			_capacity = source._capacity;
 
 			source.data = nullptr;
 			source.count = 0u;
-			source.capacity = 0u;
+			source._capacity = 0u;
 
 			return *this;
 		}
@@ -121,10 +121,9 @@ namespace hstl
 		}
 
 	public:
-		// Make sure my capacity is at least _capacity
-		void reserve(size_t _capacity)
+		void reserve(size_t _cap, bool discard_old_data = false)
 		{
-			grow_memory(_capacity);
+			grow_memory(_cap, discard_old_data);
 		}
 
 		void resize(size_t new_count)
@@ -134,7 +133,7 @@ namespace hstl
 				return;
 			}
 
-			if (new_count > capacity)
+			if (new_count > _capacity)
 			{
 				grow_memory(new_count);
 			}
@@ -156,9 +155,9 @@ namespace hstl
 
 		T& push(const T& element)
 		{
-			if (count == capacity)
+			if (count == _capacity)
 			{
-				grow_memory(capacity == 0u ? 10u : capacity * 2u);
+				grow_memory(_capacity == 0u ? 10u : _capacity * 2u);
 			}
 
 			new(&data[count++]) T(element);
@@ -168,9 +167,9 @@ namespace hstl
 
 		T& push(T&& element)
 		{
-			if (count == capacity)
+			if (count == _capacity)
 			{
-				grow_memory(capacity == 0u ? 10u : capacity * 2u);
+				grow_memory(_capacity == 0u ? 10u : _capacity * 2u);
 			}
 
 			new(&data[count++]) T(std::move(element));
@@ -181,9 +180,9 @@ namespace hstl
 		template<typename... Args>
 		T& emplace(Args&&... args)
 		{
-			if (count == capacity)
+			if (count == _capacity)
 			{
-				grow_memory(capacity == 0u ? 10u : capacity * 2u);
+				grow_memory(_capacity == 0u ? 10u : _capacity * 2u);
 			}
 
 			new (&data[count++]) T(std::forward<Args>(args)...);
@@ -193,7 +192,7 @@ namespace hstl
 
 		void shrink_to_fit()
 		{
-			if (capacity > count)
+			if (_capacity > count)
 			{
 				shrink_memory(count);
 			}
@@ -330,7 +329,7 @@ namespace hstl
 			count = 0;
 		}
 
-		const T* buffer() const { return data; }
+		T* buffer() const { return data; }
 
 		const T& operator[](size_t index) const
 		{
@@ -355,6 +354,8 @@ namespace hstl
 		// TODO: Rename to count
 		size_t size() const { return count; }
 
+		size_t capacity() const { return _capacity; }
+
 	private:
         void ensure_type_traits()
         {
@@ -365,14 +366,14 @@ namespace hstl
             static_assert(std::is_move_assignable_v<T>, "T must have a move assignment operator");
         }
 
-		void grow_memory(size_t _capacity, bool discard_old_data = false)
+		void grow_memory(size_t _cap, bool discard_old_data = false)
 		{
-			if (_capacity <= capacity)
+			if (_cap <= _capacity)
 			{
 				return;
 			}
 
-			T* new_data = static_cast<T*>(::operator new(sizeof(T) * _capacity));
+			T* new_data = static_cast<T*>(::operator new(sizeof(T) * _cap));
 
 			if (data && count > 0 && discard_old_data == false)
 			{
@@ -387,7 +388,7 @@ namespace hstl
 			::operator delete(data);
 
 			data = new_data;
-			capacity = _capacity;
+			_capacity = _cap;
 
 			if (discard_old_data == true)
 			{
@@ -395,16 +396,16 @@ namespace hstl
 			}
 		}
 
-		void shrink_memory(size_t _capacity)
+		void shrink_memory(size_t _cap)
 		{
-			if (_capacity >= capacity)
+			if (_cap >= _capacity)
 			{
 				return;
 			}
 
-			T* new_data = static_cast<T*>(::operator new(sizeof(T) * _capacity));
+			T* new_data = static_cast<T*>(::operator new(sizeof(T) * _cap));
 
-			size_t new_count = std::min(count, _capacity);
+			size_t new_count = std::min(count, _cap);
 
 			if (data && new_count > 0u)
 			{
@@ -420,7 +421,7 @@ namespace hstl
 			::operator delete(data);
 
 			data = new_data;
-			capacity = _capacity;
+			_capacity = _cap;
 			count = new_count;
 		}
 
@@ -463,6 +464,6 @@ namespace hstl
 	private:
 		T* data{nullptr};
 		size_t count{0u};
-		size_t capacity{0u};
+		size_t _capacity{0u};
 	};
 };

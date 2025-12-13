@@ -293,7 +293,7 @@ namespace hstl
 			size_t old_count = data.count;
 			size_t needed = old_count + count;
 
-			if (needed > data.capacity)
+			if (needed > data._capacity)
 			{
 				data.reserve(needed * 3u);
 			}
@@ -499,7 +499,7 @@ namespace hstl
 			auto str_length = strlen(substr);
 			auto required_size = data.count + str_length;
 
-			if (required_size > data.capacity)
+			if (required_size > data._capacity)
 			{
 				data.reserve(required_size);
 			}

@@ -13,6 +13,7 @@
 #include <Defer.h>
 #include <Array.h>
 #include <Str.h>
+#include <Hash_Set.h>
 
 hstl::Result<int> calc(int i)
 {
@@ -296,6 +297,8 @@ int main()
 	hstl::Str s = "Hello";
 
 	s.insert("HHHH", 1);
+
+	hstl::Hash_Set<int> set;
 
 	return 0;
 }
