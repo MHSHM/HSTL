@@ -45,6 +45,7 @@ namespace hstl
 			return buckets[hash].value;
 		}
 
+		bool contains(const T& key) const;
 		const T* get(const T& key) const;
 		bool remove(const T& key);
 		size_t count() const { return filled_buckets; }
