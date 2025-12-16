@@ -298,7 +298,9 @@ int main()
 
 	s.insert("HHHH", 1);
 
-	hstl::Hash_Set<int> set;
+	hstl::Hash_Set<std::string> set;
+	auto s1 = set.insert("Hello");
+	auto s2 = set.insert("World!");
 
 	return 0;
 }
