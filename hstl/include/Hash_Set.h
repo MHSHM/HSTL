@@ -4,6 +4,7 @@
 
 #include <functional>
 #include <cstddef>
+#include <type_traits>
 
 namespace hstl
 {
@@ -45,18 +46,114 @@ namespace hstl
 			return buckets[hash].value;
 		}
 
-		bool contains(const T& key) const;
-		const T* get(const T& key) const;
-		bool remove(const T& key);
+		// Will do nothing with duplicates
+		T& insert(T&& key)
+		{
+			if (filled_buckets >= static_cast<size_t>(LOAD_FACTOR * buckets.capacity()))
+			{
+				grow_then_rehash();
+			}
+
+			auto hash = hasher(key) % buckets.capacity();
+
+			while (buckets[hash].state == BUCKET_STATE::OCCUPIED)
+			{
+				if (equalizer(key, buckets[hash].value) == true)
+				{
+					return buckets[hash].value;
+				}
+
+				hash = (hash + 1u) % buckets.capacity(); // linear probing
+			}
+
+			buckets[hash].state = BUCKET_STATE::OCCUPIED;
+			buckets[hash].value = std::move(key);
+
+			filled_buckets++;
+
+			return buckets[hash].value;
+		}
+
+		const T* get(const T& key) const
+		{
+			auto hash = hasher(key) % buckets.capacity();
+
+			while (buckets[hash].state == BUCKET_STATE::OCCUPIED)
+			{
+				if (equalizer(key, buckets[hash].value) == true)
+				{
+					return &buckets[hash].value;
+				}
+
+				hash = (hash + 1u) % buckets.capacity();
+			}
+
+			return nullptr;
+		}
+
+		bool contains(const T& key) const
+		{
+			return get(key) != nullptr;
+		}
+
+		bool remove(const T& key)
+		{
+			auto capacity = buckets.capacity();
+			auto hole  = hasher(key) % capacity;
+			auto found = false;
+
+			while (buckets[hole].state == BUCKET_STATE::OCCUPIED)
+			{
+				if (equalizer(key, buckets[hole].value) == true)
+				{
+					found = true;
+					break;
+				}
+
+				hole = (hole + 1u) % capacity;
+			}
+
+			if (found == false)
+			{
+				return false;
+			}
+
+			auto current = (hole + 1u) % capacity;
+			auto dist = [capacity](size_t a, size_t b) { return (b + capacity - a) % capacity; };
+
+			while(buckets[current].state == BUCKET_STATE::OCCUPIED)
+			{
+				auto home = hasher(buckets[current].value /*key*/) % capacity;
+				auto dist_home_to_hole = dist(home, hole);
+				auto dist_home_to_current = dist(home, current);
+
+				// Shift the ruines to preserve the probing path
+				if (dist_home_to_hole <= dist_home_to_current)
+				{
+					buckets[hole].state = buckets[current].state;
+					buckets[hole].value = std::move(buckets[current].value);
+					hole = current;
+				}
+
+				current = (current + 1u) % capacity;
+			}
+
+			buckets[hole].state = BUCKET_STATE::EMPTY;
+			filled_buckets--;
+
+			return true;
+		}
+
 		size_t count() const { return filled_buckets; }
+		size_t capacity() const { return buckets.capacity(); }
 
 	private:
 		void grow_then_rehash()
 		{
-			size_t new_size = buckets.size() + GROWTH_SIZE * GROWTH_FACTOR;
+			size_t new_size = buckets.size() * GROWTH_FACTOR;
 			auto new_buckets_list = Array<Bucket>{new_size};
 
-			for (size_t i = 0; i < buckets.size(); ++i)
+			for (size_t i = 0u; i < buckets.size(); ++i)
 			{
 				if (buckets[i].state == BUCKET_STATE::OCCUPIED)
 				{
@@ -76,7 +173,7 @@ namespace hstl
 		}
 
 	private:
-		static constexpr size_t GROWTH_SIZE = 1024u;
+		static constexpr size_t GROWTH_SIZE = 5096;
 		static constexpr size_t GROWTH_FACTOR = 2u;
 		static constexpr float LOAD_FACTOR = 0.7f;
 
