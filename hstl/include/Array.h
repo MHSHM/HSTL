@@ -329,7 +329,7 @@ namespace hstl
 			count = 0;
 		}
 
-		T* buffer() const { return data; }
+		const T* buffer() const { return data; }
 
 		const T& operator[](size_t index) const
 		{

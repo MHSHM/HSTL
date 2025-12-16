@@ -1,6 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <Hash_Set.h>
+#include <Array.h>
 
 namespace {
 
@@ -172,4 +173,20 @@ TEST_CASE("Hash_Set<Key>: rehash preserves all elements")
 	}
 
 	REQUIRE(s.count() == N);
+}
+
+TEST_CASE("Hash_Set<int>: range-based for loop")
+{
+    hstl::Hash_Set<int> set;
+    set.insert(2); set.insert(4);
+    set.insert(6); set.insert(8);
+
+    size_t sum = 0u;
+
+    for (auto number : set)
+    {
+        sum += number;
+    }
+
+    REQUIRE(sum == 20u);
 }

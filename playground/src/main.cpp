@@ -273,34 +273,14 @@ int main()
 
 	auto view = empty.view();
 
-	std::unique_ptr<int> int_ptr{new int};
-
-	auto deleter = [](hstl::Str* str)
-	{
-		std::cout << "Deleting hstl::Str\n";
-		delete str;
-	};
-
-	auto my_deleter = [](int* x) {
-		printf("Deleting an int at %p.", x);
-		delete x;
-	};
-	std::unique_ptr<int, decltype(my_deleter)> my_up{ new int, my_deleter};
-
-	hstl::Str_View h = "hello world";
-	hstl::Str_View hh = "hello world";
-
-	auto found = h.find("llo");
-
-	bool res = (h == hh);
-
-	hstl::Str s = "Hello";
-
-	s.insert("HHHH", 1);
-
 	hstl::Hash_Set<std::string> set;
-	auto s1 = set.insert("Hello");
-	auto s2 = set.insert("World!");
+	set.insert("Hello");
+	set.insert("World!");
+
+	for (auto& s : set)
+	{
+		std::cout << s << '\n';
+	}
 
 	return 0;
 }

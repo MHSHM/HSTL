@@ -193,5 +193,68 @@ namespace hstl
 		Hash hasher;
 		size_t filled_buckets{0u};
 		Array<Bucket> buckets;
+
+	public: /*Iterator-related*/
+		class Iterator // Forward Iterator
+		{
+		public:
+			Iterator(const Bucket* current, const Bucket* end):
+				current{current},
+				end{end}
+			{
+				skip_empty();
+			}
+
+			Iterator& operator++()
+			{
+				if (current != end)
+				{
+					++current;
+				}
+
+				skip_empty();
+
+				return *this;
+			}
+
+			bool operator!=(const Iterator& iterator) const
+			{
+				return current != iterator.current;
+			}
+
+			bool operator==(const Iterator& iterator) const
+			{
+				return current == iterator.current;
+			}
+
+			const T& operator*() const
+			{
+				return current->value;
+			}
+
+		private:
+			void skip_empty()
+			{
+				while (current != end && current->state == BUCKET_STATE::EMPTY)
+				{
+					current++;
+				}
+			}
+
+		private:
+			const Bucket* current{nullptr};
+			const Bucket* end{nullptr};
+		};
+
+		Iterator begin() const
+		{
+			return Iterator{buckets.buffer(), buckets.buffer() + buckets.size()};
+		}
+
+		Iterator end() const
+		{
+			auto e = buckets.buffer() + buckets.size();
+			return Iterator{e, e};
+		}
 	};
 };
