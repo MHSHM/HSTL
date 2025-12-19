@@ -333,21 +333,11 @@ namespace hstl
 
 		const T& operator[](size_t index) const
 		{
-			if (index >= count)
-			{
-				throw std::out_of_range{"The index provided is out of range"};
-			}
-
 			return data[index];
 		}
 
 		T& operator[](size_t index)
 		{
-			if (index >= count)
-			{
-				throw std::out_of_range{"The index provided is out of range"};
-			}
-
 			return data[index];
 		}
 

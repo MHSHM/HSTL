@@ -14,78 +14,58 @@ namespace hstl
 	public:
 		Hash_Set()
 		{
-			buckets.resize(GROWTH_SIZE * GROWTH_FACTOR);
+			states.resize(GROWTH_SIZE * GROWTH_FACTOR);
+
+			// FIXME: This will invoke the default constrctor for all entries in the array
+			// if for example we started with 1024 entry it will invoke 1024 constructor call and it gets
+			// bad if the defalt constructor wasn't trivial and had some complex stuff going e.g. memory allocation
+			// better use raw memory and do in-place constrction upon insertion
+			values.resize(GROWTH_SIZE * GROWTH_FACTOR);
 		}
 
 	public:
-		// Will do nothing with duplicates
-		T& insert(const T& key)
+		template<typename K>
+		T& insert(K&& key)
 		{
-			if (filled_buckets >= static_cast<size_t>(LOAD_FACTOR * buckets.capacity()))
+			if (filled_buckets >= static_cast<size_t>(LOAD_FACTOR * states.size()))
 			{
 				grow_then_rehash();
 			}
 
-			auto hash = hasher(key) % buckets.capacity();
+			// NOTE: I didn't want to force `std::is_same<T, K>` to allow implicit conversions
+			// e.g. Hash_Set<Str> set should accept set.insert("SSSS")
+			auto hash = hasher(key) % states.size();
 
-			while (buckets[hash].state == BUCKET_STATE::OCCUPIED)
+			while (states[hash] == BUCKET_STATE::OCCUPIED)
 			{
-				if (equalizer(key, buckets[hash].value))
+				if (equalizer(key, values[hash]))
 				{
-					return buckets[hash].value;
+					return values[hash];
 				}
 
-				hash = ++hash % buckets.capacity(); // linear probing
+				hash = (hash + 1u) % states.size(); // linear probing
 			}
 
-			buckets[hash].state = BUCKET_STATE::OCCUPIED;
-			buckets[hash].value = key;
+			states[hash] = BUCKET_STATE::OCCUPIED;
+			values[hash] = std::forward<K>(key);
 
 			filled_buckets++;
 
-			return buckets[hash].value;
-		}
-
-		// Will do nothing with duplicates
-		T& insert(T&& key)
-		{
-			if (filled_buckets >= static_cast<size_t>(LOAD_FACTOR * buckets.capacity()))
-			{
-				grow_then_rehash();
-			}
-
-			auto hash = hasher(key) % buckets.capacity();
-
-			while (buckets[hash].state == BUCKET_STATE::OCCUPIED)
-			{
-				if (equalizer(key, buckets[hash].value) == true)
-				{
-					return buckets[hash].value;
-				}
-
-				hash = (hash + 1u) % buckets.capacity(); // linear probing
-			}
-
-			buckets[hash].state = BUCKET_STATE::OCCUPIED;
-			buckets[hash].value = std::move(key);
-
-			filled_buckets++;
-
-			return buckets[hash].value;
+			return values[hash];
 		}
 
 		const T* get(const T& key) const
 		{
-			auto hash = hasher(key) % buckets.capacity();
+			auto hash = hasher(key) % states.size();
 
-			while (buckets[hash].state == BUCKET_STATE::OCCUPIED)
+			while (states[hash] == BUCKET_STATE::OCCUPIED)
 			{
-				if (equalizer(key, buckets[hash].value) == true)
+				if (equalizer(key, values[hash]) == true)
 				{
-					return &buckets[hash].value;
+					return &values[hash];
 				}
 
-				hash = (hash + 1u) % buckets.capacity();
+				hash = (hash + 1u) % states.size();
 			}
 
 			return nullptr;
@@ -98,19 +78,19 @@ namespace hstl
 
 		bool remove(const T& key)
 		{
-			auto capacity = buckets.capacity();
-			auto hole  = hasher(key) % capacity;
+			auto _size = states.size();
+			auto hole  = hasher(key) % _size;
 			auto found = false;
 
-			while (buckets[hole].state == BUCKET_STATE::OCCUPIED)
+			while (states[hole] == BUCKET_STATE::OCCUPIED)
 			{
-				if (equalizer(key, buckets[hole].value) == true)
+				if (equalizer(key, values[hole]) == true)
 				{
 					found = true;
 					break;
 				}
 
-				hole = (hole + 1u) % capacity;
+				hole = (hole + 1u) % _size;
 			}
 
 			if (found == false)
@@ -118,98 +98,98 @@ namespace hstl
 				return false;
 			}
 
-			auto current = (hole + 1u) % capacity;
-			auto dist = [capacity](size_t a, size_t b) { return (b + capacity - a) % capacity; };
+			auto current = (hole + 1u) % _size;
+			auto dist = [_size](size_t a, size_t b) { return (b + _size - a) % _size; };
 
-			while(buckets[current].state == BUCKET_STATE::OCCUPIED)
+			while(states[current] == BUCKET_STATE::OCCUPIED)
 			{
-				auto home = hasher(buckets[current].value /*key*/) % capacity;
+				auto home = hasher(values[current] /*key*/) % _size;
 				auto dist_home_to_hole = dist(home, hole);
 				auto dist_home_to_current = dist(home, current);
 
 				// Shift the ruines to preserve the probing path
 				if (dist_home_to_hole <= dist_home_to_current)
 				{
-					buckets[hole].state = buckets[current].state;
-					buckets[hole].value = std::move(buckets[current].value);
+					states[hole] = states[current];
+					values[hole] = std::move(values[current]);
 					hole = current;
 				}
 
-				current = (current + 1u) % capacity;
+				current = (current + 1u) % _size;
 			}
 
-			buckets[hole].state = BUCKET_STATE::EMPTY;
+			states[hole] = BUCKET_STATE::EMPTY;
 			filled_buckets--;
 
 			return true;
 		}
 
 		size_t count() const { return filled_buckets; }
-		size_t capacity() const { return buckets.capacity(); }
+		size_t capacity() const { return states.size(); }
 
 	private:
 		void grow_then_rehash()
 		{
-			size_t new_size = buckets.size() * GROWTH_FACTOR;
-			auto new_buckets_list = Array<Bucket>{new_size};
+			size_t new_size = states.size() * GROWTH_FACTOR;
 
-			for (size_t i = 0u; i < buckets.size(); ++i)
+			auto new_states_list = Array<BUCKET_STATE>{new_size};
+			auto new_values_list = Array<T>{new_size};
+
+			for (size_t i = 0u; i < states.size(); ++i)
 			{
-				if (buckets[i].state == BUCKET_STATE::OCCUPIED)
+				if (states[i] == BUCKET_STATE::OCCUPIED)
 				{
-					auto new_hash = hasher(buckets[i].value /*key*/) % new_buckets_list.capacity();
+					auto new_hash = hasher(values[i] /*key*/) % new_states_list.size();
 
-					while (new_buckets_list[new_hash].state == BUCKET_STATE::OCCUPIED)
+					while (new_states_list[new_hash] == BUCKET_STATE::OCCUPIED)
 					{
-						new_hash = ++new_hash % new_buckets_list.capacity();
+						new_hash = (new_hash + 1u) % new_states_list.size();
 					}
 
-					new_buckets_list[new_hash].state = BUCKET_STATE::OCCUPIED;
-					new_buckets_list[new_hash].value = std::move(buckets[i].value);
+					new_states_list[new_hash] = BUCKET_STATE::OCCUPIED;
+					new_values_list[new_hash] = std::move(values[i]);
 				}
 			}
 
-			buckets = std::move(new_buckets_list);
+			states = std::move(new_states_list);
+			values = std::move(new_values_list);
 		}
 
 	private:
-		static constexpr size_t GROWTH_SIZE = 5096;
+		static constexpr size_t GROWTH_SIZE = 1024;
 		static constexpr size_t GROWTH_FACTOR = 2u;
 		static constexpr float LOAD_FACTOR = 0.7f;
 
-		enum class BUCKET_STATE
+		enum class BUCKET_STATE : uint8_t
 		{
 			EMPTY,
 			OCCUPIED
 		};
 
-		struct Bucket
-		{
-			BUCKET_STATE state{BUCKET_STATE::EMPTY};
-			T value;
-		};
-
 		Eq equalizer;
 		Hash hasher;
 		size_t filled_buckets{0u};
-		Array<Bucket> buckets;
+		Array<BUCKET_STATE> states;
+		Array<T> values;
 
 	public: /*Iterator-related*/
 		class Iterator // Forward Iterator
 		{
 		public:
-			Iterator(const Bucket* current, const Bucket* end):
-				current{current},
-				end{end}
+			Iterator(const BUCKET_STATE* state_ptr, const T* value_ptr, const BUCKET_STATE* state_end):
+				state_ptr{state_ptr},
+				value_ptr{value_ptr},
+				state_end{state_end}
 			{
 				skip_empty();
 			}
 
 			Iterator& operator++()
 			{
-				if (current != end)
+				if (state_ptr != state_end)
 				{
-					++current;
+					++state_ptr;
+					++value_ptr;
 				}
 
 				skip_empty();
@@ -219,42 +199,46 @@ namespace hstl
 
 			bool operator!=(const Iterator& iterator) const
 			{
-				return current != iterator.current;
+				return state_ptr != iterator.state_ptr;
 			}
 
 			bool operator==(const Iterator& iterator) const
 			{
-				return current == iterator.current;
+				return state_ptr == iterator.state_ptr;
 			}
 
 			const T& operator*() const
 			{
-				return current->value;
+				return *value_ptr;
 			}
 
 		private:
 			void skip_empty()
 			{
-				while (current != end && current->state == BUCKET_STATE::EMPTY)
+				while (state_ptr != state_end && *state_ptr == BUCKET_STATE::EMPTY)
 				{
-					current++;
+					state_ptr++;
+					value_ptr++;
 				}
 			}
 
 		private:
-			const Bucket* current{nullptr};
-			const Bucket* end{nullptr};
+			const BUCKET_STATE* state_ptr{nullptr};
+			const T* value_ptr{nullptr};
+			const BUCKET_STATE* state_end{nullptr};
 		};
 
 		Iterator begin() const
 		{
-			return Iterator{buckets.buffer(), buckets.buffer() + buckets.size()};
+			return Iterator{states.buffer(), values.buffer(), states.buffer() + states.size()};
 		}
 
 		Iterator end() const
 		{
-			auto e = buckets.buffer() + buckets.size();
-			return Iterator{e, e};
+			auto s_end = states.buffer() + states.size();
+			auto v_end = values.buffer() + values.size();
+
+			return Iterator{s_end, v_end, s_end};
 		}
 	};
 };
