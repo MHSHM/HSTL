@@ -34,7 +34,7 @@ namespace hstl
 
 			// NOTE: I didn't want to force `std::is_same<T, K>` to allow implicit conversions
 			// e.g. Hash_Set<Str> set should accept set.insert("SSSS")
-			auto hash = hasher(key) % states.size();
+			auto hash = hasher(key) & (states.size() - 1u);
 
 			while (states[hash] == BUCKET_STATE::OCCUPIED)
 			{
@@ -43,7 +43,7 @@ namespace hstl
 					return values[hash];
 				}
 
-				hash = (hash + 1u) % states.size(); // linear probing
+				hash = (hash + 1u) & (states.size() - 1u); // linear probing
 			}
 
 			states[hash] = BUCKET_STATE::OCCUPIED;
@@ -56,7 +56,7 @@ namespace hstl
 
 		const T* get(const T& key) const
 		{
-			auto hash = hasher(key) % states.size();
+			auto hash = hasher(key) & (states.size() - 1u);
 
 			while (states[hash] == BUCKET_STATE::OCCUPIED)
 			{
@@ -65,7 +65,7 @@ namespace hstl
 					return &values[hash];
 				}
 
-				hash = (hash + 1u) % states.size();
+				hash = (hash + 1u) & (states.size() - 1u);
 			}
 
 			return nullptr;
@@ -79,7 +79,7 @@ namespace hstl
 		bool remove(const T& key)
 		{
 			auto _size = states.size();
-			auto hole  = hasher(key) % _size;
+			auto hole  = hasher(key) & (_size - 1u);
 			auto found = false;
 
 			while (states[hole] == BUCKET_STATE::OCCUPIED)
@@ -90,7 +90,7 @@ namespace hstl
 					break;
 				}
 
-				hole = (hole + 1u) % _size;
+				hole = (hole + 1u) & (_size - 1u);
 			}
 
 			if (found == false)
@@ -98,12 +98,12 @@ namespace hstl
 				return false;
 			}
 
-			auto current = (hole + 1u) % _size;
+			auto current = (hole + 1u) & (_size - 1u);
 			auto dist = [_size](size_t a, size_t b) { return (b + _size - a) % _size; };
 
 			while(states[current] == BUCKET_STATE::OCCUPIED)
 			{
-				auto home = hasher(values[current] /*key*/) % _size;
+				auto home = hasher(values[current] /*key*/) & (_size - 1u);
 				auto dist_home_to_hole = dist(home, hole);
 				auto dist_home_to_current = dist(home, current);
 
@@ -115,7 +115,7 @@ namespace hstl
 					hole = current;
 				}
 
-				current = (current + 1u) % _size;
+				current = (current + 1u) & (_size - 1u);
 			}
 
 			states[hole] = BUCKET_STATE::EMPTY;
@@ -139,11 +139,11 @@ namespace hstl
 			{
 				if (states[i] == BUCKET_STATE::OCCUPIED)
 				{
-					auto new_hash = hasher(values[i] /*key*/) % new_states_list.size();
+					auto new_hash = hasher(values[i] /*key*/) & (new_states_list.size() - 1u);
 
 					while (new_states_list[new_hash] == BUCKET_STATE::OCCUPIED)
 					{
-						new_hash = (new_hash + 1u) % new_states_list.size();
+						new_hash = (new_hash + 1u) & (new_states_list.size() - 1u);
 					}
 
 					new_states_list[new_hash] = BUCKET_STATE::OCCUPIED;
