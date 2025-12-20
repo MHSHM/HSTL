@@ -2,6 +2,8 @@
 
 #include "Array.h"
 
+#include <assert.h>
+
 namespace hstl
 {
 	// Non owning wrapper aound a sequence of charachters
@@ -14,20 +16,14 @@ namespace hstl
 			_data{_data},
 			_count{_count}
 		{
-			if (_data == nullptr || _count == 0)
-			{
-				throw std::invalid_argument{"an invalid argument was provided"};
-			}
+			assert(_data);
 		}
 
 		Str_View(const char* c_str):
 		_data{c_str},
 		_count{0u}
 		{
-			if (_data == nullptr)
-			{
-				throw std::invalid_argument{"c_str can't be a nullptr"};
-			}
+			assert(_data);
 
 			_count = strlen(c_str);
 		}
@@ -45,11 +41,6 @@ namespace hstl
 
 		const char& operator[](size_t index) const
 		{
-			if (index >= _count)
-			{
-				throw std::out_of_range{"Index is out of range"};
-			}
-
 			return _data[index];
 		}
 
@@ -133,10 +124,7 @@ namespace hstl
 
 		Str_View substr(size_t pos, size_t length) const
 		{
-			if (pos > _count)
-			{
-				throw std::out_of_range{"pos is out of range"};
-			}
+			assert(pos < _count);
 
 			size_t remaining = _count - pos;
 
@@ -386,10 +374,19 @@ namespace hstl
 			return view().starts_with(prefix);
 		}
 
-
 		bool starts_with(const Str_View& prefix) const
 		{
 			return view().starts_with(prefix);
+		}
+
+		bool ends_with(const char* suffix) const
+		{
+			return view().ends_with(suffix);
+		}
+
+		bool ends_with(const Str_View& suffix) const
+		{
+			return view().ends_with(suffix);
 		}
 
 		Str& operator+=(char ch)
@@ -406,30 +403,16 @@ namespace hstl
 
 		char& operator[](size_t index)
 		{
-			if (data.count == 1)
-			{
-				throw std::out_of_range{"index is out of range"};
-			}
-
-			if (index > data.count - 2)
-			{
-				throw std::out_of_range{"index is out of range"};
-			}
+			assert(empty() == false);
+			assert(index < data.count);
 
 			return data[index];
 		}
 
 		const char& operator[](size_t index) const
 		{
-			if (data.count == 1)
-			{
-				throw std::out_of_range{"index is out of range"};
-			}
-
-			if (index > data.count - 2)
-			{
-				throw std::out_of_range{"index is out of range"};
-			}
+			assert(empty() == false);
+			assert(index < data.count);
 
 			return data[index];
 		}
@@ -437,21 +420,29 @@ namespace hstl
 		// Will remove the first occurence if "all_occurences" was false
 		void remove(char ch, bool all_occurences = false)
 		{
-			auto str_view = view();
-			auto loc = str_view.find(ch);
-
 			if (all_occurences)
 			{
-				while (loc != npos)
-				{
-					data.remove_ordered(loc);
+				auto read_ptr = begin();
+				auto write_ptr = begin();
+				auto e = end();
 
-					loc = view().find(ch);
+				while (read_ptr < e)
+				{
+					if (*read_ptr != ch)
+					{
+						*write_ptr = *read_ptr;
+						++write_ptr;
+					}
+
+					++read_ptr;
 				}
+
+				*write_ptr = '\0';
+				data.count = (write_ptr - begin()) + 1u;
 			}
 			else
 			{
-				if (loc != npos)
+				if (auto loc = view().find(ch); loc != npos)
 				{
 					data.remove_ordered(loc);
 				}
@@ -485,16 +476,8 @@ namespace hstl
 
 		Str_View insert(const char* substr, size_t pos)
 		{
-			if (substr == nullptr)
-			{
-				// or should it be a no-op
-				throw std::invalid_argument{"substr is null"};
-			}
-
-			if (pos > data.count - 1)
-			{
-				throw std::out_of_range{"pos is out of range"};
-			}
+			assert(substr);
+			assert(pos <= data.count - 1);
 
 			auto str_length = strlen(substr);
 			auto required_size = data.count + str_length;
