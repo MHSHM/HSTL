@@ -23,7 +23,7 @@ namespace hstl
 
 		Array(size_t _count)
 		{
-			ensure_type_traits();
+			static_assert(std::is_default_constructible_v<T>, "T must have a default constructor");
 
 			grow_memory(_count);
 
@@ -37,7 +37,7 @@ namespace hstl
 			count{source.count},
 			_capacity{source._capacity}
 		{
-			ensure_type_traits();
+			static_assert(std::is_copy_constructible_v<T>, "T must have a copy constructor");
 
 			if (source.count > 0u)
 			{
@@ -48,6 +48,8 @@ namespace hstl
 
 		Array& operator=(const Array& source)
 		{
+			static_assert(std::is_copy_assignable_v<T>, "T must have a copy assignment operator");
+
 			if (this == &source)
 			{
 				return *this;
@@ -59,10 +61,7 @@ namespace hstl
 			}
 			else
 			{
-				if constexpr (std::is_trivially_destructible_v<T> == false)
-				{
-					std::destroy_n(data, count);
-				}
+				std::destroy_n(data, count);
 
 				count = 0;
 			}
@@ -94,10 +93,7 @@ namespace hstl
 				return *this;
 			}
 
-			if constexpr (std::is_trivially_destructible_v<T> == false)
-			{
-				std::destroy_n(data, count);
-			}
+			std::destroy_n(data, count);
 			::operator delete(data);
 
 			data = source.data;
@@ -113,10 +109,7 @@ namespace hstl
 
 		~Array() noexcept
 		{
-			if constexpr (std::is_trivially_destructible_v<T> == false)
-			{
-				std::destroy_n(data, count);
-			}
+			std::destroy_n(data, count);
 			::operator delete(data);
 		}
 
@@ -128,6 +121,8 @@ namespace hstl
 
 		void resize(size_t new_count)
 		{
+			static_assert(std::is_default_constructible_v<T>, "T must have a default constructor");
+
 			if (new_count == count)
 			{
 				return;
@@ -144,10 +139,7 @@ namespace hstl
 			}
 			else
 			{
-				if constexpr (std::is_trivially_destructible_v<T> == false)
-				{
-					std::destroy_n(data + new_count, count - new_count);
-				}
+				std::destroy_n(data + new_count, count - new_count);
 			}
 
 			count = new_count;
@@ -155,6 +147,8 @@ namespace hstl
 
 		T& push(const T& element)
 		{
+			static_assert(std::is_copy_constructible_v<T>, "T must have a copy constructor");
+
 			if (count == _capacity)
 			{
 				grow_memory(_capacity == 0u ? 10u : _capacity * 2u);
@@ -167,6 +161,8 @@ namespace hstl
 
 		T& push(T&& element)
 		{
+			static_assert(std::is_move_constructible_v<T>, "T must have a move constructor");
+
 			if (count == _capacity)
 			{
 				grow_memory(_capacity == 0u ? 10u : _capacity * 2u);
@@ -180,6 +176,8 @@ namespace hstl
 		template<typename... Args>
 		T& emplace(Args&&... args)
 		{
+			static_assert(std::is_constructible_v<T, Args...>, "T doesn't have a constructor that matches the provided arguments");
+
 			if (count == _capacity)
 			{
 				grow_memory(_capacity == 0u ? 10u : _capacity * 2u);
@@ -200,25 +198,20 @@ namespace hstl
 
 		void remove(size_t index)
 		{
-			if (index >= count)
-			{
-				throw std::out_of_range{"The index provided is out of range"};
-			}
-
-		    if constexpr (std::is_trivially_copyable_v<T>)
+		    if constexpr (std::is_scalar_v<T>)
 		    {
-		        data[index] = data[count - 1];
+		    	memcpy(&data[index], &data[count - 1], sizeof(T));
 		    }
 		    else
 		    {
-		        std::destroy_at(&data[index]);
-
 		        if (index < count - 1)
 		        {
-		            ::new(&data[index]) T{std::move(data[count - 1])};
+					static_assert(std::is_move_assignable_v<T>, "T must have a move assignment operator");
 
-		            std::destroy_at(&data[count - 1]);
+		        	data[index] = std::move(data[count - 1]);
 		        }
+
+		       	std::destroy_at(&data[count - 1]);
 		    }
 
 		    --count;
@@ -226,12 +219,7 @@ namespace hstl
 
 		void remove_ordered(size_t index)
 		{
-			if (index >= count)
-			{
-				throw std::out_of_range{"The index provided is out of range"};
-			}
-
-            if constexpr (std::is_trivially_copyable_v<T>)
+            if constexpr (std::is_scalar_v<T>)
             {
                 memmove(&data[index], &data[index + 1], sizeof(T) * (count - index - 1));
             }
@@ -239,9 +227,9 @@ namespace hstl
             {
                 for (size_t i = index; i < count - 1; ++i)
                 {
-                    std::destroy_at(&data[i]);
+					static_assert(std::is_move_assignable_v<T>, "T must have a move assignment operator");
 
-                    ::new(&data[i]) T{std::move(data[i + 1])};
+                	data[i] = std::move(data[i + 1]);
                 }
 
                 std::destroy_at(&data[count - 1]);
@@ -253,6 +241,8 @@ namespace hstl
 		template<typename F>
 		void remove_if(F f)
 		{
+			// TODO: Rework this function and decide whether it should follow the standard and maintain order or not.
+
 			// NOTE: This type trait will check if the result of F is __convertable__ to bool
 			// I'm not sure if this is desired but roll with it for now
 			static_assert(std::is_invocable_r_v<bool, F, const T&>, "Predicate must be callable as bool(const T&)");
@@ -268,34 +258,27 @@ namespace hstl
 
 				if(last_survivior != i)
 				{
-					if constexpr (std::is_trivially_copyable_v<T> == true)
+					if constexpr (std::is_scalar_v<T> == true)
 					{
 						memcpy(&data[i], &data[last_survivior], sizeof(T));
 					}
 					else
 					{
-						if constexpr (std::is_trivially_destructible_v<T> == false)
-						{
-							std::destroy_at(&data[i]);
-						}
+						static_assert(std::is_move_assignable_v<T>, "T must have a move assignment operator");
 
-						::new(&data[i]) T{std::move(data[last_survivior])};
+						data[i] = std::move(data[last_survivior]);
 
-						if constexpr (std::is_trivially_destructible_v<T> == false)
-						{
-							std::destroy_at(&data[last_survivior]);
-						}
+						std::destroy_at(&data[last_survivior]);
 					}
 				}
 				else
 				{
-					if constexpr (std::is_trivially_destructible_v<T> == false)
-					{
-						std::destroy_at(&data[i]);
-					}
+					std::destroy_at(&data[i]);
 				}
+
 				last_survivior--;
 			}
+
 			count = last_survivior + 1;
 		}
 
@@ -321,10 +304,7 @@ namespace hstl
 
 		void clear() noexcept
 		{
-			if constexpr (std::is_trivially_destructible_v<T> == false)
-			{
-				std::destroy_n(data, count);
-			}
+			std::destroy_n(data, count);
 
 			count = 0;
 		}
@@ -347,15 +327,6 @@ namespace hstl
 		size_t capacity() const { return _capacity; }
 
 	private:
-        void ensure_type_traits()
-        {
-            static_assert(std::is_default_constructible_v<T>, "T must have a default constructor");
-            static_assert(std::is_copy_constructible_v<T>, "T must have a copy constructor");
-            static_assert(std::is_copy_assignable_v<T>, "T must have a copy assignment operator");
-            static_assert(std::is_move_constructible_v<T>, "T must have a move constructor");
-            static_assert(std::is_move_assignable_v<T>, "T must have a move assignment operator");
-        }
-
 		void grow_memory(size_t _cap, bool discard_old_data = false)
 		{
 			if (_cap <= _capacity)
@@ -367,14 +338,12 @@ namespace hstl
 
 			if (data && count > 0 && discard_old_data == false)
 			{
-				// FIXME: If this throws we will leak "new_data"
+				static_assert(std::is_move_constructible_v<T>, "T must have a move constructor");
+
 				uninitialized_move_range(data, count, new_data);
 			}
 
-			if constexpr (std::is_trivially_destructible_v<T> == false)
-			{
-				std::destroy_n(data, count);
-			}
+			std::destroy_n(data, count);
 			::operator delete(data);
 
 			data = new_data;
@@ -399,15 +368,12 @@ namespace hstl
 
 			if (data && new_count > 0u)
 			{
-				// FIXME: If this throws we will leak "new_data"
+				static_assert(std::is_move_constructible_v<T>, "T must have a move constructor");
+
 				uninitialized_move_range(data, new_count, new_data);
 			}
 
-			if constexpr (std::is_trivially_destructible_v<T> == false)
-			{
-				std::destroy_n(data, count);
-			}
-
+			std::destroy_n(data, count);
 			::operator delete(data);
 
 			data = new_data;
@@ -417,7 +383,7 @@ namespace hstl
 
 		void uninitialized_copy_range(T* src, size_t count, T* dst)
 		{
-			if constexpr (std::is_trivially_copyable_v<T> == true)
+			if constexpr (std::is_scalar_v<T> == true)
 			{
 				memcpy(dst, src, sizeof(T) * count);
 			}
@@ -429,7 +395,7 @@ namespace hstl
 
         void uninitialized_move_range(T* src, size_t count, T* dst)
         {
-            if constexpr (std::is_trivially_copyable_v<T> == true)
+            if constexpr (std::is_scalar_v<T> == true)
             {
                 memcpy(dst, src, sizeof(T) * count);
             }
@@ -441,7 +407,7 @@ namespace hstl
 
 		void uninitialized_value_construct_range(T* start, size_t count)
 		{
-			if constexpr (std::is_trivially_default_constructible_v<T> == true)
+			if constexpr (std::is_scalar_v<T> == true)
 			{
 				memset(start, 0, sizeof(T) * count);
 			}
