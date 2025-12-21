@@ -311,6 +311,8 @@ namespace hstl
 
 		const T* buffer() const { return data; }
 
+		T* buffer() { return data; }
+
 		const T& operator[](size_t index) const
 		{
 			return data[index];

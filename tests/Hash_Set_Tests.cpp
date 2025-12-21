@@ -272,7 +272,7 @@ TEST_CASE("Hash_Set<Tracker>: Copy Semantics")
 		// 2. Verify Cost
 		// We expect exactly 3 copies (one per element)
 		// (Assuming rehash doesn't trigger extra moves, but copy ctor should be direct)
-		// REQUIRE(Tracker::copy_count == 3); -> FIXME: Copy only occupied entries
+		REQUIRE(Tracker::copy_count == 3);
 		REQUIRE(Tracker::move_count == 0);
 	}
 
@@ -322,7 +322,7 @@ TEST_CASE("Hash_Set<Tracker>: Move Semantics")
 		REQUIRE(set_b.contains(Tracker(10)));
 
 		// 2. Verify Source is Empty/Valid
-		// REQUIRE(set_a.count() == 0);
+		REQUIRE(set_a.count() == 0);
 
 		// 3. Verify ZERO Cost
 		// Moving a container should just swap internal pointers.
@@ -354,7 +354,7 @@ TEST_CASE("Hash_Set<Tracker>: Move Semantics")
 
 		REQUIRE(set_b.count() == 3);
 		REQUIRE(set_b.contains(Tracker(20)));
-		// REQUIRE(set_a.count() == 0);
+		REQUIRE(set_a.count() == 0);
 
 		// Cost Check:
 		// We might see a destructor call for Tracker(999), but NO copies or moves 

@@ -23,6 +23,90 @@ namespace hstl
 			values.resize(GROWTH_SIZE * GROWTH_FACTOR);
 		}
 
+		Hash_Set(const Hash_Set& other):
+			equalizer{other.equalizer},
+			hasher{other.hasher},
+			filled_buckets{other.filled_buckets},
+			states{other.states}
+		{
+			size_t count = GROWTH_SIZE * GROWTH_FACTOR;
+
+			values.resize(count);
+
+			if constexpr (std::is_scalar_v<T> == true)
+			{
+				memcpy(values.buffer(), other.values.buffer(), sizeof(T) * count);
+			}
+			else
+			{
+				for (size_t i = 0u; i < count; ++i)
+				{
+					if (other.states[i] == BUCKET_STATE::EMPTY)
+						continue;
+
+					values[i] = other.values[i];
+				}
+			}
+		}
+
+		Hash_Set& operator=(const Hash_Set& other)
+		{
+			if (this == &other)
+			{
+				return *this;
+			}
+
+			equalizer = other.equalizer;
+			hasher = other.hasher;
+			filled_buckets = other.filled_buckets;
+			states = other.states;
+
+			size_t count = other.values.size();
+
+			values.resize(count);
+
+			if constexpr (std::is_scalar_v<T> == true)
+			{
+				memcpy(values.buffer(), other.values.buffer(), sizeof(T) * count);
+			}
+			else
+			{
+				// This will do many redundunt copies but we have to do it this way to make sure we
+				// override all elements in values, see the fixme note in the constructor
+				values = other.values;
+			}
+
+			return *this;
+		}
+
+		Hash_Set(Hash_Set&& other):
+			equalizer{std::move(other.equalizer)},
+			hasher{std::move(other.hasher)},
+			filled_buckets{other.filled_buckets},
+			states{std::move(other.states)},
+			values{std::move(other.values)}
+		{
+			other.filled_buckets = 0u;
+		}
+
+		Hash_Set& operator=(Hash_Set&& other)
+		{
+			if (this == &other)
+			{
+				return *this;
+			}
+
+			equalizer = std::move(other.equalizer);
+			hasher = std::move(other.hasher);
+			filled_buckets = other.filled_buckets;
+			states = std::move(other.states);
+			values = std::move(other.values);
+
+			other.filled_buckets = 0u;
+
+			return *this;
+		}
+
 	public:
 		template<typename K>
 		T& insert(K&& key)
