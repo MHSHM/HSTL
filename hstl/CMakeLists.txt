@@ -1,17 +1,15 @@
 set(HSTL_PUBLIC_HEADERS
     include/Result.h
-    include/Json_Value.h
-    include/Json_Reader.h
     include/Defer.h
     include/Array.h
     include/Str.h
     include/Hash_Set.h)
 
-set(HSTL_SOURCES
-    src/Json_Value.cpp
-    src/Json_Reader.cpp)
+set(HSTL_SOURCES)
 
 add_library(HSTL STATIC ${HSTL_SOURCES} ${HSTL_PUBLIC_HEADERS})
+
+set_target_properties(HSTL PROPERTIES LINKER_LANGUAGE CXX)
 
 add_library(HSTL::HSTL ALIAS HSTL)
 
