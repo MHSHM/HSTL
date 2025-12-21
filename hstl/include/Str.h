@@ -124,14 +124,11 @@ namespace hstl
 
 		Str_View substr(size_t pos, size_t length) const
 		{
-			assert(pos < _count);
+			assert(pos <= _count);
 
 			size_t remaining = _count - pos;
 
-			if (length > remaining)
-			{
-				throw std::out_of_range{"length exceeds the string boundaries"};
-			}
+			assert(length <= remaining);
 
 			return {_data + pos, length};
 		}
