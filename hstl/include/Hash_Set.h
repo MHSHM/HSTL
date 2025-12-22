@@ -31,7 +31,7 @@ namespace hstl
 
 			values = static_cast<T*>(::operator new(count * sizeof(T)));
 
-			if constexpr (std::is_scalar_v<T> == true)
+			if constexpr (std::is_trivially_copyable_v<T> == true)
 			{
 				memcpy(values, other.values, sizeof(T) * count);
 			}
@@ -54,13 +54,13 @@ namespace hstl
 				return *this;
 			}
 
-			size_t count = other.states.size();
-
 			destroy_values();
+
+			size_t count = other.states.size();
 
 			values = static_cast<T*>(::operator new(count * sizeof(T)));
 
-			if constexpr (std::is_scalar_v<T> == true)
+			if constexpr (std::is_trivially_copyable_v<T> == true)
 			{
 				memcpy(values, other.values, sizeof(T) * count);
 			}
@@ -153,6 +153,11 @@ namespace hstl
 
 		const T* get(const T& key) const
 		{
+			if (filled_buckets == 0)
+			{
+				return nullptr;
+			}
+
 			auto hash = hasher(key) & (states.size() - 1u);
 
 			while (states[hash] == BUCKET_STATE::OCCUPIED)
@@ -170,11 +175,21 @@ namespace hstl
 
 		bool contains(const T& key) const
 		{
+			if (filled_buckets == 0)
+			{
+				return false;
+			}
+
 			return get(key) != nullptr;
 		}
 
 		bool remove(const T& key)
 		{
+			if (filled_buckets == 0)
+			{
+				return false;
+			}
+
 			auto _size = states.size();
 			auto hole  = hasher(key) & (_size - 1u);
 			auto found = false;
@@ -236,11 +251,11 @@ namespace hstl
 			{
 				if (states[i] == BUCKET_STATE::OCCUPIED)
 				{
-					auto new_hash = hasher(values[i] /*key*/) & (new_states_list.size() - 1u);
+					auto new_hash = hasher(values[i] /*key*/) & (new_size - 1u);
 
 					while (new_states_list[new_hash] == BUCKET_STATE::OCCUPIED)
 					{
-						new_hash = (new_hash + 1u) & (new_states_list.size() - 1u);
+						new_hash = (new_hash + 1u) & (new_size - 1u);
 					}
 
 					new_states_list[new_hash] = BUCKET_STATE::OCCUPIED;
@@ -292,7 +307,7 @@ namespace hstl
 		Array<BUCKET_STATE> states;
 		T* values{nullptr};
 
-	public: /*Iterator-related*/
+	public: // Iterator-related
 		class Iterator // Forward Iterator
 		{
 		public:
@@ -332,6 +347,11 @@ namespace hstl
 				return *value_ptr;
 			}
 
+			const T* operator->() const
+			{
+				return value_ptr;
+			}
+
 		private:
 			void skip_empty()
 			{
@@ -356,9 +376,8 @@ namespace hstl
 		Iterator end() const
 		{
 			auto s_end = states.end();
-			auto v_end = values + states.size();
 
-			return Iterator{s_end, v_end, s_end};
+			return Iterator{s_end, values + states.size(), s_end};
 		}
 	};
 };

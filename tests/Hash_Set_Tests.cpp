@@ -1,7 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <Hash_Set.h>
-#include <Array.h>
 
 namespace {
 
@@ -72,7 +71,7 @@ namespace {
 
 } // namespace
 
-TEST_CASE("Hash_Set<int>: insert/get/contains/duplicates/remove")
+TEST_CASE("Hash_Set<int>: insert/get/contains/remove")
 {
 	hstl::Hash_Set<int> s;
 

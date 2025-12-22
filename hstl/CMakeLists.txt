@@ -3,7 +3,8 @@ set(HSTL_PUBLIC_HEADERS
     include/Defer.h
     include/Array.h
     include/Str.h
-    include/Hash_Set.h)
+    include/Hash_Set.h
+    include/Hash_Map.h)
 
 set(HSTL_SOURCES)
 
