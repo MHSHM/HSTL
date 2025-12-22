@@ -14,13 +14,11 @@ namespace hstl
 	public:
 		Hash_Set()
 		{
-			states.resize(GROWTH_SIZE * GROWTH_FACTOR);
+			size_t count = GROWTH_SIZE * GROWTH_FACTOR;
 
-			// FIXME: This will invoke the default constrctor for all entries in the array
-			// if for example we started with 1024 entry it will invoke 1024 constructor call and it gets
-			// bad if the defalt constructor wasn't trivial and had some complex stuff going e.g. memory allocation
-			// better use raw memory and do in-place constrction upon insertion
-			values.resize(GROWTH_SIZE * GROWTH_FACTOR);
+			states.resize(count);
+
+			values = static_cast<T*>(::operator new(count * sizeof(T)));
 		}
 
 		Hash_Set(const Hash_Set& other):
@@ -29,13 +27,13 @@ namespace hstl
 			filled_buckets{other.filled_buckets},
 			states{other.states}
 		{
-			size_t count = GROWTH_SIZE * GROWTH_FACTOR;
+			size_t count = other.states.size();
 
-			values.resize(count);
+			values = static_cast<T*>(::operator new(count * sizeof(T)));
 
 			if constexpr (std::is_scalar_v<T> == true)
 			{
-				memcpy(values.buffer(), other.values.buffer(), sizeof(T) * count);
+				memcpy(values, other.values, sizeof(T) * count);
 			}
 			else
 			{
@@ -44,7 +42,7 @@ namespace hstl
 					if (other.states[i] == BUCKET_STATE::EMPTY)
 						continue;
 
-					values[i] = other.values[i];
+					new (&values[i]) T(other.values[i]);
 				}
 			}
 		}
@@ -56,25 +54,31 @@ namespace hstl
 				return *this;
 			}
 
+			size_t count = other.states.size();
+
+			destroy_values();
+
+			values = static_cast<T*>(::operator new(count * sizeof(T)));
+
+			if constexpr (std::is_scalar_v<T> == true)
+			{
+				memcpy(values, other.values, sizeof(T) * count);
+			}
+			else
+			{
+				for (size_t i = 0u; i < count; ++i)
+				{
+					if (other.states[i] == BUCKET_STATE::EMPTY)
+						continue;
+
+					new (&values[i]) T(other.values[i]);
+				}
+			}
+
 			equalizer = other.equalizer;
 			hasher = other.hasher;
 			filled_buckets = other.filled_buckets;
 			states = other.states;
-
-			size_t count = other.values.size();
-
-			values.resize(count);
-
-			if constexpr (std::is_scalar_v<T> == true)
-			{
-				memcpy(values.buffer(), other.values.buffer(), sizeof(T) * count);
-			}
-			else
-			{
-				// This will do many redundunt copies but we have to do it this way to make sure we
-				// override all elements in values, see the fixme note in the constructor
-				values = other.values;
-			}
 
 			return *this;
 		}
@@ -84,8 +88,9 @@ namespace hstl
 			hasher{std::move(other.hasher)},
 			filled_buckets{other.filled_buckets},
 			states{std::move(other.states)},
-			values{std::move(other.values)}
+			values{other.values}
 		{
+			other.values = nullptr;
 			other.filled_buckets = 0u;
 		}
 
@@ -96,15 +101,23 @@ namespace hstl
 				return *this;
 			}
 
+			destroy_values();
+
 			equalizer = std::move(other.equalizer);
 			hasher = std::move(other.hasher);
 			filled_buckets = other.filled_buckets;
 			states = std::move(other.states);
-			values = std::move(other.values);
+			values = other.values;
 
+			other.values = nullptr;
 			other.filled_buckets = 0u;
 
 			return *this;
+		}
+
+		~Hash_Set()
+		{
+			destroy_values();
 		}
 
 	public:
@@ -131,7 +144,7 @@ namespace hstl
 			}
 
 			states[hash] = BUCKET_STATE::OCCUPIED;
-			values[hash] = std::forward<K>(key);
+			new (&values[hash]) T(std::forward<K>(key));
 
 			filled_buckets++;
 
@@ -194,7 +207,6 @@ namespace hstl
 				// Shift the ruines to preserve the probing path
 				if (dist_home_to_hole <= dist_home_to_current)
 				{
-					states[hole] = states[current];
 					values[hole] = std::move(values[current]);
 					hole = current;
 				}
@@ -203,6 +215,7 @@ namespace hstl
 			}
 
 			states[hole] = BUCKET_STATE::EMPTY;
+			std::destroy_at(&values[hole]);
 			filled_buckets--;
 
 			return true;
@@ -217,7 +230,7 @@ namespace hstl
 			size_t new_size = states.size() * GROWTH_FACTOR;
 
 			auto new_states_list = Array<BUCKET_STATE>{new_size};
-			auto new_values_list = Array<T>{new_size};
+			auto new_values_list = static_cast<T*>(::operator new(new_size * sizeof(T)));
 
 			for (size_t i = 0u; i < states.size(); ++i)
 			{
@@ -231,12 +244,35 @@ namespace hstl
 					}
 
 					new_states_list[new_hash] = BUCKET_STATE::OCCUPIED;
-					new_values_list[new_hash] = std::move(values[i]);
+					new (&new_values_list[new_hash]) T(std::move(values[i]));
+
+					std::destroy_at(&values[i]);
 				}
 			}
+			::operator delete(values);
 
 			states = std::move(new_states_list);
-			values = std::move(new_values_list);
+			values = new_values_list;
+		}
+
+		void destroy_values()
+		{
+			if constexpr (std::is_trivially_destructible_v<T> == false)
+			{
+				if (filled_buckets > 0u)
+				{
+					size_t count = states.size();
+
+					for (size_t i = 0; i < count; ++i)
+					{
+						if (states[i] == BUCKET_STATE::EMPTY)
+							continue;
+
+						std::destroy_at(&values[i]);
+					}
+				}
+			}
+			::operator delete(values);
 		}
 
 	private:
@@ -254,7 +290,7 @@ namespace hstl
 		Hash hasher;
 		size_t filled_buckets{0u};
 		Array<BUCKET_STATE> states;
-		Array<T> values;
+		T* values{nullptr};
 
 	public: /*Iterator-related*/
 		class Iterator // Forward Iterator
@@ -314,13 +350,13 @@ namespace hstl
 
 		Iterator begin() const
 		{
-			return Iterator{states.buffer(), values.buffer(), states.buffer() + states.size()};
+			return Iterator{states.buffer(), values, states.end()};
 		}
 
 		Iterator end() const
 		{
-			auto s_end = states.buffer() + states.size();
-			auto v_end = values.buffer() + values.size();
+			auto s_end = states.end();
+			auto v_end = values + states.size();
 
 			return Iterator{s_end, v_end, s_end};
 		}

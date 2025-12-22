@@ -296,7 +296,7 @@ TEST_CASE("Hash_Set<Tracker>: Copy Semantics")
 		REQUIRE(set_b.contains(Tracker(2)));
 
 		// Expect 3 copies for the elements transfer
-		// REQUIRE(Tracker::copy_count == 3); -> FIXME: Copy only occupied entries
+		REQUIRE(Tracker::copy_count == 3);
 	}
 }
 
