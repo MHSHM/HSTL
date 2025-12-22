@@ -357,8 +357,6 @@ TEST_CASE("Hash_Set<Tracker>: Move Semantics")
 		REQUIRE(set_a.count() == 0);
 
 		// Cost Check:
-		// We might see a destructor call for Tracker(999), but NO copies or moves 
-		// for the elements being transferred from A to B.
 		REQUIRE(Tracker::copy_count == 0);
 		REQUIRE(Tracker::move_count == 0);
 	}
