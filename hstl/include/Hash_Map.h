@@ -266,7 +266,8 @@ namespace hstl
 			}
 
 			auto _size = states.size();
-			auto hole = hasher(key) & (_size - 1u);
+			auto mask = _size - 1u;
+			auto hole = hasher(key) & mask;
 			auto found = false;
 
 			while (states[hole] == BUCKET_STATE::OCCUPIED)
@@ -277,7 +278,7 @@ namespace hstl
 					break;
 				}
 
-				hole = (hole + 1u) & (_size - 1u);
+				hole = (hole + 1u) & mask;
 			}
 
 			if (found == false)
@@ -285,12 +286,12 @@ namespace hstl
 				return false;
 			}
 
-			auto current = (hole + 1u) & (_size - 1u);
-			auto dist = [_size](size_t a, size_t b) { return (b + _size - a) % _size; };
+			auto current = (hole + 1u) & mask;
+			auto dist = [mask, _size](size_t a, size_t b) { return (b + _size - a) & mask; };
 
 			while(states[current] == BUCKET_STATE::OCCUPIED)
 			{
-				auto home = hasher(slots[current].key) & (_size - 1u);
+				auto home = hasher(slots[current].key) & mask;
 				auto dist_home_to_hole = dist(home, hole);
 				auto dist_home_to_current = dist(home, current);
 
@@ -300,7 +301,7 @@ namespace hstl
 					hole = current;
 				}
 
-				current = (current + 1u) & (_size - 1u);
+				current = (current + 1u) & mask;
 			}
 
 			states[hole] = BUCKET_STATE::EMPTY;
