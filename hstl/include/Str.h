@@ -203,6 +203,32 @@ namespace hstl
 			return memcmp(_data + (_count - length), suffix.data(), sizeof(char) * length) == 0;
 		}
 
+		// The splits are alive as long as the view is valid
+		Array<Str_View> split(char delimiter) const
+		{
+			Array<Str_View> splits;
+
+			const char* split_end = data();
+			const char* split_start = data();
+			const char* end = data() + count();
+
+			while (split_end < end)
+			{
+				if (*split_end == delimiter) // That's a full split
+				{
+					splits.push(Str_View{split_start, static_cast<size_t>(split_end - split_start)});
+
+					split_start = split_end + 1u;
+				}
+
+				++split_end;
+			}
+
+			splits.push(Str_View{split_start, static_cast<size_t>(split_end - split_start)});
+
+			return splits;
+		}
+
 	private:
 		const char* _data{nullptr};
 		size_t _count{0u};
@@ -276,11 +302,11 @@ namespace hstl
 
 			size_t count = strlen(str);
 			size_t old_count = data.count;
-			size_t needed = old_count + count;
+			size_t required_count = old_count + count;
 
-			if (needed > data._capacity)
+			if (required_count > data._capacity)
 			{
-				data.reserve(needed * 3u);
+				data.reserve(required_count * 2u);
 			}
 
 			memcpy(data.data + (old_count - 1), str, sizeof(char) * count);
@@ -290,6 +316,47 @@ namespace hstl
 			data[data.count - 1] = '\0';
 
 			return Str_View{data.data + old_count - 1u, count};
+		}
+
+		Str_View push_n(char ch, size_t n)
+		{
+			size_t required_count = data.count + n;
+			size_t old_count = data.count;
+
+			if (required_count > data._capacity)
+			{
+				data.reserve(required_count * 2u);
+			}
+
+			memset(data.data + old_count - 1u, ch, sizeof(char) * n);
+
+			data.count += n;
+
+			data[data.count - 1] = '\0';
+
+			return Str_View{data.data + old_count - 1u, n};
+		}
+
+		// The range shouldn't be null-terminated
+		Str_View push_range(const char* start, size_t length)
+		{
+			assert(start);
+
+			size_t required_count = length + data.count;
+			size_t old_count = data.count;
+
+			if (required_count > data._capacity)
+			{
+				data.reserve(required_count * 2u);
+			}
+
+			memcpy(data.data + old_count - 1u, start, sizeof(char) * length);
+
+			data.count += length;
+
+			data[data.count - 1] = '\0';
+
+			return Str_View{data.data + old_count - 1, length};
 		}
 
 		void resize(size_t count, char ch)
@@ -354,8 +421,8 @@ namespace hstl
 			data[0] = '\0';
 		}
 
-		// Will make a read-only view of the string, any modifications to the source string
-		// can cause the view to be invalid
+		// Will make a read-only view of the string execluding the null-terminator
+		// any modifications to the source string can cause the view to be invalid
 		const Str_View view() const
 		{
 			return Str_View{data.data, data.count - 1u};
@@ -493,6 +560,12 @@ namespace hstl
 			data.count += str_length;
 
 			return Str_View{data.data + pos, str_length};
+		}
+
+		// Splits are valid as long as the string is valid
+		Array<Str_View> split(char delimiter)
+		{
+			return view().split(delimiter);
 		}
 
 		bool empty() const

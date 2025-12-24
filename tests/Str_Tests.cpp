@@ -1,5 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
-// Include your headers
+
 #include "Str.h"
 
 // --- Helper to verify internal structure ---
@@ -153,5 +153,138 @@ TEST_CASE("Str: Comparison & Search") {
     SECTION("find") {
         REQUIRE(s.find("World") == 6);
         REQUIRE(s.find("Universe") == hstl::Str::npos);
+    }
+}
+
+TEST_CASE("Str: push_n (Repeated Character Append)") {
+    hstl::Str s("Key");
+
+    SECTION("Append sequence of chars") {
+        // "Key" -> "Key::::"
+        s.push_n(':', 4);
+
+        REQUIRE(s.count() == 7);
+        REQUIRE(std::strcmp(s.c_str(), "Key::::") == 0);
+        REQUIRE(verify_terminator(s, 7));
+    }
+
+    SECTION("Append to empty string") {
+        hstl::Str empty;
+        empty.push_n('A', 3);
+
+        REQUIRE(empty.count() == 3);
+        REQUIRE(std::strcmp(empty.c_str(), "AAA") == 0);
+        REQUIRE(verify_terminator(empty, 3));
+    }
+
+    SECTION("Large push triggering reallocation") {
+        hstl::Str small("A");
+        // Force a resize (assuming default capacity is small, e.g., 16 or 24)
+        small.push_n('B', 100);
+
+        REQUIRE(small.count() == 101);
+        REQUIRE(small[0] == 'A');
+        REQUIRE(small[1] == 'B');
+        REQUIRE(small[100] == 'B');
+        REQUIRE(verify_terminator(small, 101));
+    }
+}
+
+TEST_CASE("Str: push_range (Buffer Append)") {
+    hstl::Str s("Hello");
+
+    SECTION("Append C-String") {
+        const char* suffix = " World";
+        s.push_range(suffix, 6);
+
+        REQUIRE(s.count() == 11);
+        REQUIRE(std::strcmp(s.c_str(), "Hello World") == 0);
+        REQUIRE(verify_terminator(s, 11));
+    }
+
+    SECTION("Append Raw Data (Not Null Terminated)") {
+        // Only append "123" from "12345"
+        char buffer[] = { '1', '2', '3', '4', '5' };
+        s.push_range(buffer, 3);
+
+        REQUIRE(s.count() == 8);
+        REQUIRE(std::strcmp(s.c_str(), "Hello123") == 0);
+        REQUIRE(verify_terminator(s, 8));
+    }
+}
+
+TEST_CASE("Str_View: split") {
+
+    // Helper to check view content without operator==
+    auto is_equal = [](const hstl::Str_View& view, const char* expected) {
+        if (view.count() != std::strlen(expected)) return false;
+        return std::strncmp(view.data(), expected, view.count()) == 0;
+        };
+
+    SECTION("Basic Split") {
+        hstl::Str s("a,b,c");
+        auto splits = s.split(',');
+
+        REQUIRE(splits.size() == 3);
+        REQUIRE(is_equal(splits[0], "a"));
+        REQUIRE(is_equal(splits[1], "b"));
+        REQUIRE(is_equal(splits[2], "c"));
+    }
+
+    SECTION("Split with Empty Tokens (Consecutive Delimiters)") {
+        hstl::Str s("a,,b");
+        auto splits = s.split(',');
+
+        REQUIRE(splits.size() == 3);
+        REQUIRE(is_equal(splits[0], "a"));
+        REQUIRE(is_equal(splits[1], "")); // Empty view between commas
+        REQUIRE(is_equal(splits[2], "b"));
+    }
+
+    SECTION("Leading Delimiter") {
+        hstl::Str s(",a");
+        auto splits = s.split(',');
+
+        REQUIRE(splits.size() == 2);
+        REQUIRE(is_equal(splits[0], ""));
+        REQUIRE(is_equal(splits[1], "a"));
+    }
+
+    SECTION("Trailing Delimiter") {
+        hstl::Str s("a,");
+        auto splits = s.split(',');
+
+        REQUIRE(splits.size() == 2);
+        REQUIRE(is_equal(splits[0], "a"));
+        REQUIRE(is_equal(splits[1], ""));
+    }
+
+    SECTION("Single Token (No Delimiter)") {
+        hstl::Str s("abc");
+        auto splits = s.split(',');
+
+        REQUIRE(splits.size() == 1);
+        REQUIRE(is_equal(splits[0], "abc"));
+    }
+
+    SECTION("Empty String") {
+        hstl::Str s("");
+        auto splits = s.split(',');
+
+        // Should return one empty token
+        REQUIRE(splits.size() == 1);
+        REQUIRE(is_equal(splits[0], ""));
+    }
+
+    SECTION("Only Delimiters") {
+        hstl::Str s(",,");
+        auto splits = s.split(',');
+
+        // "," -> ["", ""]
+        // ",," -> ["", "", ""]
+        REQUIRE(splits.size() == 3);
+        REQUIRE(is_equal(splits[0], ""));
+        REQUIRE(is_equal(splits[1], ""));
+        REQUIRE(is_equal(splits[2], ""));
     }
 }
