@@ -7,9 +7,7 @@
 #include <cstddef>
 #include <memory>
 
-#include <Json_Value.h>
 #include <Result.h>
-#include <Json_Reader.h>
 #include <Defer.h>
 #include <Array.h>
 #include <Str.h>
@@ -23,27 +21,6 @@ hstl::Result<int> calc(int i)
 	}
 
 	return hstl::Err{"The provided number is not even\n"};
-}
-
-const char* _token_type_to_str(hstl::TOKEN_TYPE type)
-{
-	switch (type)
-	{
-	case hstl::TOKEN_TYPE::LEFT_BRACE: return "LEFT_BRACE";
-	case hstl::TOKEN_TYPE::RIGHT_BRACE: return "RIGHT_BRACE";
-	case hstl::TOKEN_TYPE::LEFT_BRACKET: return "LEFT_BRACKET";
-	case hstl::TOKEN_TYPE::RIGHT_BRACKET: return "RIGHT_BRACKET";
-	case hstl::TOKEN_TYPE::COLON: return "COLON";
-	case hstl::TOKEN_TYPE::COMMA: return "COMMA";
-	case hstl::TOKEN_TYPE::STRING: return "STRING";
-	case hstl::TOKEN_TYPE::NUMBER: return "NUMBER";
-	case hstl::TOKEN_TYPE::TRUE: return "TRUE";
-	case hstl::TOKEN_TYPE::FALSE: return "FALSE";
-	case hstl::TOKEN_TYPE::NIL: return "NULL";
-	case hstl::TOKEN_TYPE::END: return "EOF";
-	}
-
-	return "";
 }
 
 template<typename T, size_t length>
