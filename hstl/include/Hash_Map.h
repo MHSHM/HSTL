@@ -1,5 +1,3 @@
-#pragma once
-
 #include "Array.h"
 
 #include <functional>
@@ -16,6 +14,7 @@ namespace hstl
 		static constexpr size_t GROWTH_SIZE = 1024;
 		static constexpr size_t GROWTH_FACTOR = 2u;
 		static constexpr float LOAD_FACTOR = 0.7f;
+		static constexpr uint8_t BIT_OCCUPIED = 0b10000000;
 
 		struct Slot
 		{
@@ -23,16 +22,27 @@ namespace hstl
 			Value value;
 		};
 
-		enum class BUCKET_STATE : uint8_t
+		static bool is_empty(uint8_t control_byte)
 		{
-			EMPTY,
-			OCCUPIED
-		};
+			return (control_byte & BIT_OCCUPIED) == 0;
+		}
+
+		static bool is_match(uint8_t control_byte, uint8_t fingerprint)
+		{
+			return control_byte == (fingerprint | BIT_OCCUPIED);
+		}
+
+		static uint8_t make_control_byte(size_t hash)
+		{
+			static_assert(sizeof(size_t) == 8, "The logic is built upon the assumption that size_t is 8 bytes");
+			uint8_t fingerprint = static_cast<uint8_t>(hash >> 57);
+			return fingerprint | BIT_OCCUPIED;
+		}
 
 		Eq equalizer;
 		Hash hasher;
 		size_t filled_buckets{0u};
-		Array<BUCKET_STATE> states;
+		Array<uint8_t> states;
 		Slot* slots{nullptr};
 
 	private:
@@ -46,7 +56,7 @@ namespace hstl
 
 					for (size_t i = 0; i < count; ++i)
 					{
-						if (states[i] == BUCKET_STATE::EMPTY)
+						if (is_empty(states[i]))
 							continue;
 
 						std::destroy_at(&slots[i]);
@@ -59,32 +69,31 @@ namespace hstl
 		void grow_then_rehash()
 		{
 			size_t new_size = states.size() * GROWTH_FACTOR;
-
-			auto new_states = Array<BUCKET_STATE>{new_size};
-			auto new_slots = static_cast<Slot*>(::operator new(new_size * sizeof(Slot)));
+			auto new_states_list = Array<uint8_t>{new_size};
+			auto new_slots_list = static_cast<Slot*>(::operator new(new_size * sizeof(Slot)));
 
 			for (size_t i = 0u; i < states.size(); ++i)
 			{
-				if (states[i] == BUCKET_STATE::OCCUPIED)
+				if (!is_empty(states[i]))
 				{
-					auto new_hash = hasher(slots[i].key) & (new_size - 1u);
+					auto new_hash = hasher(slots[i].key);
+					auto new_index = new_hash & (new_size - 1u);
 
-					// Probe in new table
-					while (new_states[new_hash] == BUCKET_STATE::OCCUPIED)
+					while (!is_empty(new_states_list[new_index]))
 					{
-						new_hash = (new_hash + 1u) & (new_size - 1u);
+						new_index = (new_index + 1u) & (new_size - 1u);
 					}
 
-					new_states[new_hash] = BUCKET_STATE::OCCUPIED;
-					new (&new_slots[new_hash]) Slot{std::move(slots[i].key), std::move(slots[i].value)};
+					new_states_list[new_index] = states[i];
+					new (&new_slots_list[new_index]) Slot{std::move(slots[i].key), std::move(slots[i].value)};
 
 					std::destroy_at(&slots[i]);
 				}
 			}
 			::operator delete(slots);
 
-			states = std::move(new_states);
-			slots = new_slots;
+			states = std::move(new_states_list);
+			slots = new_slots_list;
 		}
 
 	public:
@@ -115,7 +124,7 @@ namespace hstl
 			{
 				for (size_t i = 0u; i < count; ++i)
 				{
-					if (other.states[i] == BUCKET_STATE::OCCUPIED)
+					if (!is_empty(other.states[i]))
 					{
 						new (&slots[i]) Slot(other.slots[i]);
 					}
@@ -144,10 +153,10 @@ namespace hstl
 			{
 				for (size_t i = 0u; i < count; ++i)
 				{
-					if (other.states[i] == BUCKET_STATE::EMPTY)
-						continue;
-
-					new (&slots[i]) Slot(other.slots[i]);
+					if (!is_empty(other.states[i]))
+					{
+						new (&slots[i]) Slot(other.slots[i]);
+					}
 				}
 			}
 
@@ -205,25 +214,30 @@ namespace hstl
 				grow_then_rehash();
 			}
 
-			auto hash = hasher(key) & (states.size() - 1u);
+			auto hash = hasher(key);
+			uint8_t control_byte = make_control_byte(hash);
+			size_t index = hash & (states.size() - 1u);
 
-			while (states[hash] == BUCKET_STATE::OCCUPIED)
+			while (!is_empty(states[index]))
 			{
-				if (equalizer(key, slots[hash].key))
+				if (states[index] == control_byte)
 				{
-					slots[hash].value = std::forward<V>(value); // overwrite the existing value
-					return slots[hash].value;
+					if (equalizer(key, slots[index].key))
+					{
+						slots[index].value = std::forward<V>(value); // overwrite existing
+						return slots[index].value;
+					}
 				}
 
-				hash = (hash + 1u) & (states.size() - 1u);
+				index = (index + 1u) & (states.size() - 1u);
 			}
 
-			states[hash] = BUCKET_STATE::OCCUPIED;
-			new (&slots[hash]) Slot{std::forward<K>(key), std::forward<V>(value)};
+			states[index] = control_byte;
+			new (&slots[index]) Slot{std::forward<K>(key), std::forward<V>(value)};
 
 			filled_buckets++;
 
-			return slots[hash].value;
+			return slots[index].value;
 		}
 
 		const Value* get(const Key& key) const
@@ -233,16 +247,21 @@ namespace hstl
 				return nullptr;
 			}
 
-			auto hash = hasher(key) & (states.size() - 1u);
+			auto hash = hasher(key);
+			uint8_t control_byte = make_control_byte(hash);
+			size_t index = hash & (states.size() - 1u);
 
-			while (states[hash] == BUCKET_STATE::OCCUPIED)
+			while (!is_empty(states[index]))
 			{
-				if (equalizer(key, slots[hash].key))
+				if (states[index] == control_byte)
 				{
-					return &slots[hash].value;
+					if (equalizer(key, slots[index].key))
+					{
+						return &slots[index].value;
+					}
 				}
 
-				hash = (hash + 1u) & (states.size() - 1u);
+				index = (index + 1u) & (states.size() - 1u);
 			}
 
 			return nullptr;
@@ -250,11 +269,6 @@ namespace hstl
 
 		bool contains(const Key& key) const
 		{
-			if (filled_buckets == 0)
-			{
-				return false;
-			}
-
 			return get(key) != nullptr;
 		}
 
@@ -267,18 +281,24 @@ namespace hstl
 
 			auto _size = states.size();
 			auto mask = _size - 1u;
-			auto hole = hasher(key) & mask;
+
+			auto hash = hasher(key);
+			auto hole_control_byte = make_control_byte(hash);
+			auto hole_index = hash & mask;
 			auto found = false;
 
-			while (states[hole] == BUCKET_STATE::OCCUPIED)
+			while (!is_empty(states[hole_index]))
 			{
-				if (equalizer(key, slots[hole].key) == true)
+				if (states[hole_index] == hole_control_byte)
 				{
-					found = true;
-					break;
+					if (equalizer(key, slots[hole_index].key))
+					{
+						found = true;
+						break;
+					}
 				}
 
-				hole = (hole + 1u) & mask;
+				hole_index = (hole_index + 1u) & mask;
 			}
 
 			if (found == false)
@@ -286,26 +306,30 @@ namespace hstl
 				return false;
 			}
 
-			auto current = (hole + 1u) & mask;
+			auto current_index = (hole_index + 1u) & mask;
 			auto dist = [mask, _size](size_t a, size_t b) { return (b + _size - a) & mask; };
 
-			while(states[current] == BUCKET_STATE::OCCUPIED)
+			while(!is_empty(states[current_index]))
 			{
-				auto home = hasher(slots[current].key) & mask;
-				auto dist_home_to_hole = dist(home, hole);
-				auto dist_home_to_current = dist(home, current);
+				auto home_hash = hasher(slots[current_index].key);
+				auto home_index = home_hash & mask;
+
+				auto dist_home_to_hole = dist(home_index, hole_index);
+				auto dist_home_to_current = dist(home_index, current_index);
 
 				if (dist_home_to_hole <= dist_home_to_current)
 				{
-					slots[hole] = std::move(slots[current]);
-					hole = current;
+					slots[hole_index] = std::move(slots[current_index]);
+					states[hole_index] = states[current_index];
+
+					hole_index = current_index;
 				}
 
-				current = (current + 1u) & mask;
+				current_index = (current_index + 1u) & mask;
 			}
 
-			states[hole] = BUCKET_STATE::EMPTY;
-			std::destroy_at(&slots[hole]);
+			states[hole_index] = 0;
+			std::destroy_at(&slots[hole_index]);
 			filled_buckets--;
 
 			return true;
@@ -315,10 +339,10 @@ namespace hstl
 		size_t capacity() const { return states.size(); }
 
 	public: // Iterator-related
-		class Iterator // Forward Iterator
+		class Iterator // Input Iterator
 		{
 		public:
-			Iterator(const BUCKET_STATE* state_ptr, const Slot* slot_ptr, const BUCKET_STATE* state_end):
+			Iterator(const uint8_t* state_ptr, const Slot* slot_ptr, const uint8_t* state_end):
 				state_ptr{state_ptr},
 				slot_ptr{slot_ptr},
 				state_end{state_end}
@@ -362,16 +386,16 @@ namespace hstl
 		private:
 			void skip_empty()
 			{
-				while (state_ptr != state_end && *state_ptr == BUCKET_STATE::EMPTY)
+				while (state_ptr != state_end && is_empty(*state_ptr))
 				{
 					state_ptr++;
 					slot_ptr++;
 				}
 			}
 
-			const BUCKET_STATE* state_ptr{nullptr};
+			const uint8_t* state_ptr{nullptr};
 			const Slot* slot_ptr{nullptr};
-			const BUCKET_STATE* state_end{nullptr};
+			const uint8_t* state_end{nullptr};
 		};
 
 		Iterator begin() const
