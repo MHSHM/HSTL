@@ -42,16 +42,14 @@ namespace hstl
 	private:
 		size_t capacity;
 		size_t offset;
-		void* data{nullptr};
+		void* memory_block{nullptr};
 
 	private:
-	[[nodiscard]]
 	bool is_power_of_two(size_t x)
 	{
 		return (x != 0) && ((x & (x - 1)) == 0);
 	}
 
-	[[nodiscard]]
 	size_t align_up(size_t offset, size_t alignment)
 	{
 		assert(is_power_of_two(alignment) && "Alignment must be a power of two");
@@ -64,7 +62,7 @@ namespace hstl
 			capacity{capacity},
 			offset{0u}
 		{
-			data = ::operator new(capacity, std::align_val_t(alignof(std::max_align_t)));
+			memory_block = ::operator new(capacity, std::align_val_t(alignof(std::max_align_t)));
 		}
 
 		[[nodiscard]]
@@ -79,7 +77,7 @@ namespace hstl
 
 			offset = aligned_offset + size;
 
-			return (char*)data + aligned_offset;
+			return (char*)memory_block + aligned_offset;
 		}
 
 		void deallocate(void* ptr, size_t size, size_t alignment = alignof(std::max_align_t)) override
@@ -94,7 +92,100 @@ namespace hstl
 
 		~Linear_Allocator() override
 		{
-			::operator delete(data, capacity, std::align_val_t(alignof(std::max_align_t)));
+			if (memory_block)
+			{
+				::operator delete(memory_block, capacity, std::align_val_t(alignof(std::max_align_t)));
+			}
+		}
+	};
+
+	class Pool_Allocator : public Allocator
+	{
+	private:
+		struct Node
+		{
+			Node* next;
+		};
+
+		size_t total_capacity{0};
+		size_t alignment;
+		void* memory_block{nullptr};
+		Node* head{nullptr};
+
+	private:
+		bool is_power_of_two(size_t x)
+		{
+			return (x != 0) && ((x & (x - 1)) == 0);
+		}
+
+		size_t align_up(size_t offset, size_t alignment)
+		{
+			assert(is_power_of_two(alignment) && "Alignment must be a power of two");
+
+			return (offset + alignment - 1) & ~(alignment - 1);
+		}
+
+	public:
+		Pool_Allocator(size_t object_size, size_t object_alignment, size_t max_num_objects):
+			alignment{object_alignment}
+		{
+			assert(max_num_objects > 0u);
+
+			size_t min_block_size = std::max(object_size, sizeof(Node));
+
+			size_t aligned_object_size = align_up(min_block_size, object_alignment);
+
+			total_capacity = aligned_object_size * max_num_objects;
+
+			memory_block = ::operator new(total_capacity, std::align_val_t(object_alignment));
+
+			Node* current = static_cast<Node*>(memory_block);
+
+			for (size_t i = 0; i < max_num_objects - 1u; ++i)
+			{
+				current->next = reinterpret_cast<Node*>((char*)current + aligned_object_size);
+
+				current = current->next;
+			}
+
+			current->next = nullptr;
+			head = static_cast<Node*>(memory_block);
+		}
+
+		// NOTE: size and alignment are ingored as they're known by the allocator design
+		[[nodiscard]]
+		void* allocate(size_t size = 0u, size_t alignment = alignof(std::max_align_t)) override
+		{
+			if (head == nullptr)
+			{
+				return nullptr;
+			}
+
+			void* ptr = static_cast<void*>(head);
+			head = head->next;
+
+			return ptr;
+		}
+
+		// NOTE: size and alignment are ingored as they're known by the allocator design
+		void deallocate(void* ptr, size_t size = 0u, size_t alignment = alignof(std::max_align_t)) override
+		{
+			char* start = static_cast<char*>(memory_block);
+			char* end = static_cast<char*>(start + total_capacity);
+			assert(ptr && ptr >= start && ptr < end);
+
+			Node* new_head = static_cast<Node*>(ptr);
+			new_head->next = head;
+
+			head = new_head;
+		}
+
+		~Pool_Allocator() override
+		{
+			if (memory_block)
+			{
+				::operator delete(memory_block, std::align_val_t(alignment));
+			}
 		}
 	};
 }
