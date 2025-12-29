@@ -263,5 +263,7 @@ int main()
 
 	hstl::log_info("{} {}!", "Hello", "World");
 
+	auto formatted_str = hstl::Str::format("{} {}", "Hello", "World");
+
 	return 0;
 }

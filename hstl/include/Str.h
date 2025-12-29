@@ -3,12 +3,17 @@
 #include "Array.h"
 
 #include <assert.h>
+#include <stdio.h>
 
 namespace hstl
 {
 	// Non owning wrapper aound a sequence of charachters
 	class Str_View
 	{
+	private:
+		const char* _data{nullptr};
+		size_t _count{0u};
+
 	public:
 		static constexpr size_t npos = static_cast<size_t>(-1);
 
@@ -228,14 +233,126 @@ namespace hstl
 
 			return splits;
 		}
-
-	private:
-		const char* _data{nullptr};
-		size_t _count{0u};
 	};
 
 	class Str
 	{
+	private:
+		hstl::Array<char> data;
+
+	private:
+		void init_empty_string()
+		{
+			data.resize(1u);
+			data[0] = '\0';
+		}
+
+	public: // Str formatted related stuff
+		static void append(Str& buffer, Str_View view)
+		{
+			buffer.push_range(view.data(), view.count());
+		}
+
+		static void append(Str& buffer, const char* cstring)
+		{
+			if (cstring)
+			{
+				buffer.push(cstring);
+			}
+		}
+
+		static void append(Str& buffer, const Str& str)
+		{
+			append(buffer, str.view());
+		}
+
+		template<typename T>
+		requires std::is_integral_v<T>
+		static void append(Str& buffer, T value)
+		{
+			// 1234 / 10 -> 123
+			// 1234 % 10 -> 4
+
+			if (value == 0)
+			{
+				buffer.push('0');
+				return;
+			}
+
+			static constexpr size_t MAX_SIZE = 24u;
+			char temp[MAX_SIZE]{};
+			size_t end = MAX_SIZE;
+
+			// Take the abs(value) in a safe way, i.e. don't overflow when
+			// value is INT_MIN for example
+			using Unsigned_T = std::make_unsigned_t<T>;
+			Unsigned_T u_value = static_cast<Unsigned_T>(value);
+
+			if (value < 0)
+			{
+				u_value = 0 - u_value;
+			}
+
+			while (u_value > 0)
+			{
+				temp[--end] = '0' + (u_value % 10);
+				u_value /= 10;
+			}
+
+			if (value < 0)
+			{
+				temp[--end] = '-';
+			}
+
+			buffer.push_range(temp + end, MAX_SIZE - end);
+		}
+
+		template<typename... Args>
+		static void format(Str& buffer, const char* fmt, Args&&... args)
+		{
+			const char* read_ptr = fmt;
+
+			auto process_arg = [&buffer, &read_ptr](const auto& arg)
+			{
+				using T = std::decay_t<decltype(arg)>;
+
+				static_assert(
+					std::is_same_v<T, Str> ||
+					std::is_same_v<T, Str_View> ||
+					std::is_integral_v<T> ||
+					std::is_same_v<T, const char*>,
+					"hstl doesn't know how to log your type"
+				);
+
+				auto next_place_holder = strstr(read_ptr, "{}");
+
+				if (next_place_holder)
+				{
+					buffer.push_range(read_ptr, next_place_holder - read_ptr);
+
+					append(buffer, arg);
+
+					read_ptr = next_place_holder + 2;
+				}
+			};
+
+			// expands to: process_arg(arg1), process_arg(arg2), ...
+			(process_arg(args), ...);
+
+			append(buffer, read_ptr);
+		}
+
+		template<typename... Args>
+		static Str format(const char* fmt, Args&&... args)
+		{
+			Str buffer;
+			buffer.reserve(1024);
+
+			format(buffer, fmt, std::forward<Args>(args)...);
+
+			return buffer;
+		}
+
 	public:
 		static constexpr size_t npos = static_cast<size_t>(-1);
 
@@ -572,15 +689,5 @@ namespace hstl
 		{
 			return data.count == 1u;
 		}
-
-	private:
-		void init_empty_string()
-		{
-			data.resize(1u);
-			data[0] = '\0';
-		}
-
-	private:
-		hstl::Array<char> data;
 	};
 };
