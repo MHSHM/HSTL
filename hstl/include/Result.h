@@ -10,18 +10,22 @@ namespace hstl
 	class Err
 	{
 	private:
-		Str_View message;
+		Str message;
 
 	public:
-		Err(const char* message):
-			message{message}
+		template<typename... Args>
+		Err(const char* fmt, Args&&... args)
 		{
+			// This will invoke a dynamic memory allocation
+			// TODO: Use Fixed_Str when implemented instead
+			message.reserve(512);
 
+			Str::format(message, fmt, std::forward<Args>(args)...);
 		}
 
 		Str_View get_message() const
 		{
-			return message;
+			return message.view();
 		}
 	};
 

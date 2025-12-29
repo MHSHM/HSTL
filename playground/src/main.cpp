@@ -261,9 +261,10 @@ int main()
 		std::cout << s << '\n';
 	}
 
-	hstl::log_info("{} {}!", "Hello", "World");
-
 	auto formatted_str = hstl::Str::format("{} {}", "Hello", "World");
+	auto formatted_err = hstl::Err("Failed to open {}", "bunny.obj");
+
+	hstl::log_error("{}", formatted_err.get_message());
 
 	return 0;
 }
