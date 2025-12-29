@@ -3,8 +3,6 @@
 #include "Str.h"
 
 #include <cstring>
-#include <type_traits>
-#include <stdio.h>
 #include <assert.h>
 #include <source_location>
 
@@ -15,6 +13,20 @@ namespace hstl
 	static constexpr const char* COLOR_RED    = "\033[31m";
 	static constexpr const char* COLOR_GREEN  = "\033[32m";
 	static constexpr const char* COLOR_YELLOW = "\033[33m";
+
+	struct Log_Format
+	{
+		const char* fmt;
+		std::source_location loc;
+
+		// Constructor allows implicit conversion from string literals (e.g. "Hello {}")
+		// and captures the caller's source location automatically.
+		Log_Format(const char* fmt, const std::source_location& loc = std::source_location::current())
+			:fmt{fmt}, loc{loc}
+		{
+
+		}
+	};
 
 	constexpr const char* get_filename(const char* path)
 	{
@@ -34,10 +46,8 @@ namespace hstl
 	}
 
 	template<typename... Args>
-	void _log_impl(const char* prefix, const char* color, const char* fmt, Args&&... args)
+	void _log_impl(const char* prefix, const char* color, const char* fmt, const std::source_location& loc, Args&&... args)
 	{
-		auto loc = std::source_location::current();
-
 		// This will invoke a dynamic memory allocation
 		// TODO: Use Fixed_Str when implemented instead
 		Str buffer;
@@ -66,20 +76,20 @@ namespace hstl
 	}
 
 	template<typename... Args>
-	void log_error(const char* fmt, Args&&... args)
+	void log_error(Log_Format log_format, Args&&... args)
 	{
-		_log_impl("[ERROR] ", COLOR_RED, fmt, std::forward<Args>(args)...);
+		_log_impl("[ERROR] ", COLOR_RED, log_format.fmt, log_format.loc, std::forward<Args>(args)...);
 	}
 
 	template<typename... Args>
-	void log_info(const char* fmt, Args&&... args)
+	void log_info(Log_Format log_format, Args&&... args)
 	{
-		_log_impl("[INFO] ", COLOR_GREEN, fmt, std::forward<Args>(args)...);
+		_log_impl("[INFO] ", COLOR_GREEN, log_format.fmt, log_format.loc, std::forward<Args>(args)...);
 	}
 
 	template<typename... Args>
-	void log_warn(const char* fmt, Args&&... args)
+	void log_warn(Log_Format log_format, Args&&... args)
 	{
-		_log_impl("[WARN] ", COLOR_YELLOW, fmt, std::forward<Args>(args)...);
+		_log_impl("[WARN] ", COLOR_YELLOW, log_format.fmt, log_format.loc, std::forward<Args>(args)...);
 	}
 };

@@ -283,8 +283,7 @@ namespace hstl
 			char temp[MAX_SIZE]{};
 			size_t end = MAX_SIZE;
 
-			// Take the abs(value) in a safe way, i.e. don't overflow when
-			// value is INT_MIN for example
+			// Take the abs(value) in a safe way, i.e. don't overflow when value is INT_MIN for example
 			using Unsigned_T = std::make_unsigned_t<T>;
 			Unsigned_T u_value = static_cast<Unsigned_T>(value);
 

@@ -225,45 +225,10 @@ std::unique_ptr<T> make_unique_ptr(Args&&... args)
 
 int main()
 {
-	hstl::Array<int> numbers;
-
-	int data[]{ 100, 200, 300, 400, 500 };
-	size_t data_len = 5;
-
-	auto size_t = fold([](auto x, auto y) -> decltype(x + y) {
-		return x + y;
-	}, data, 5, 0);
-
-	for (int i = 0; i < 10; ++i)
-	{
-		numbers.push(i);
-	}
-
-	numbers.remove_ordered(0);
-	numbers.remove_ordered(3);
-	numbers.remove_ordered(4);
-
-	hstl::Str str{"Hello World!"};
-	str.resize(20, 'H');
-
-	hstl::Str empty;
-	auto substr  = empty.push("Hello");
-	auto substr0 = empty.push(" World!");
-
-	auto view = empty.view();
-
-	hstl::Hash_Set<std::string> set;
-	set.insert("Hello");
-	set.insert("World!");
-
-	for (auto& s : set)
-	{
-		std::cout << s << '\n';
-	}
-
 	auto formatted_str = hstl::Str::format("{} {}", "Hello", "World");
 	auto formatted_err = hstl::Err("Failed to open {}", "bunny.obj");
 
+	hstl::log_info("{}", formatted_str);
 	hstl::log_error("{}", formatted_err.get_message());
 
 	return 0;
