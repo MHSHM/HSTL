@@ -321,7 +321,7 @@ namespace hstl
 					std::is_same_v<T, Str_View> ||
 					std::is_integral_v<T> ||
 					std::is_same_v<T, const char*>,
-					"hstl doesn't know how to log your type"
+					"hstl doesn't know how to handle your type"
 				);
 
 				auto next_place_holder = strstr(read_ptr, "{}");
