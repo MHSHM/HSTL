@@ -7,5 +7,6 @@ HSTL is supposed to be an easy-to-read high perofmance stl-like library, it curr
 - Str
 - Logging.
 - Error handling that is not exceptions.
+- Linear Allocator and Pool Allocator.
 
 and It will keep growing inshallah until I can use it to build a game from scratch.
