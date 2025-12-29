@@ -13,6 +13,7 @@
 #include <Str.h>
 #include <Hash_Set.h>
 #include <Memory.h>
+#include <Log.h>
 
 hstl::Result<int> calc(int i)
 {
@@ -260,16 +261,7 @@ int main()
 		std::cout << s << '\n';
 	}
 
-	auto allocator = hstl::Default_Allocator::get();
-	auto ptr = allocator->allocate(1024);
-	allocator->deallocate(ptr, 1024);
-
-	hstl::Linear_Allocator linear_allocator{1024};
-	float* f = (float*)linear_allocator.allocate(sizeof(float), alignof(float));
-	double* d = (double*)linear_allocator.allocate(sizeof(double), alignof(double));
-
-	*f = 10.0f;
-	*d = 15.0;
+	hstl::log_info("{} {}!", "Hello", "World");
 
 	return 0;
 }

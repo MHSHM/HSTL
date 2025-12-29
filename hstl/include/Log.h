@@ -93,8 +93,10 @@ namespace hstl
 	}
 
 	template<typename... Args>
-	void _log_impl(const char* prefix, const char* color, const std::source_location& loc, const char* fmt, Args&&... args)
+	void _log_impl(const char* prefix, const char* color, const char* fmt, Args&&... args)
 	{
+		auto loc = std::source_location::current();
+
 		// This will invoke a dynamic memory allocation
 		// TODO: Use Fixed_Str when implemented instead
 		Str buffer;
@@ -151,20 +153,20 @@ namespace hstl
 	}
 
 	template<typename... Args>
-	void log_error(const char* fmt, Args&&... args, const std::source_location& loc = std::source_location::current())
+	void log_error(const char* fmt, Args&&... args)
 	{
-		_log_impl("[ERROR] ", COLOR_RED, loc, fmt, std::forward<Args>(args)...);
+		_log_impl("[ERROR] ", COLOR_RED, fmt, std::forward<Args>(args)...);
 	}
 
 	template<typename... Args>
-	void log_info(const char* fmt, Args&&... args, const std::source_location& loc = std::source_location::current())
+	void log_info(const char* fmt, Args&&... args)
 	{
-		_log_impl("[INFO] ", COLOR_GREEN, loc, fmt, std::forward<Args>(args)...);
+		_log_impl("[INFO] ", COLOR_GREEN, fmt, std::forward<Args>(args)...);
 	}
 
 	template<typename... Args>
-	void log_warn(const char* fmt, Args&&... args, const std::source_location& loc = std::source_location::current())
+	void log_warn(const char* fmt, Args&&... args)
 	{
-		_log_impl("[WARN] ", COLOR_YELLOW, loc, fmt, std::forward<Args>(args)...);
+		_log_impl("[WARN] ", COLOR_YELLOW, fmt, std::forward<Args>(args)...);
 	}
 };
