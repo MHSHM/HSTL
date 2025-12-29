@@ -16,65 +16,6 @@ namespace hstl
 	static constexpr const char* COLOR_GREEN  = "\033[32m";
 	static constexpr const char* COLOR_YELLOW = "\033[33m";
 
-	inline static void append(Str& buffer, Str_View view)
-	{
-		buffer.push_range(view.data(), view.count());
-	}
-
-	inline static void append(Str& buffer, const char* cstring)
-	{
-		if (cstring)
-		{
-			buffer.push(cstring);
-		}
-	}
-
-	inline static void append(Str& buffer, const Str& str)
-	{
-		append(buffer, str.view());
-	}
-
-	template<typename T>
-	requires std::is_integral_v<T>
-	inline static void append(Str& buffer, T value)
-	{
-		// 1234 / 10 -> 123
-		// 1234 % 10 -> 4
-
-		if (value == 0)
-		{
-			buffer.push('0');
-			return;
-		}
-
-		static constexpr size_t MAX_SIZE = 24u;
-		char temp[MAX_SIZE]{};
-		size_t end = MAX_SIZE;
-
-		// Take the abs(value) in a safe way, i.e. don't overflow when
-		// value is INT_MIN for example
-		using Unsigned_T = std::make_unsigned_t<T>;
-		Unsigned_T u_value = static_cast<Unsigned_T>(value);
-
-		if (value < 0)
-		{
-			u_value = 0 - u_value;
-		}
-
-		while (u_value > 0)
-		{
-			temp[--end] = '0' + (u_value % 10);
-			u_value /= 10;
-		}
-
-		if (value < 0)
-		{
-			temp[--end] = '-';
-		}
-
-		buffer.push_range(temp + end, MAX_SIZE - end);
-	}
-
 	constexpr const char* get_filename(const char* path)
 	{
 		const char* file_name = path;
@@ -106,48 +47,20 @@ namespace hstl
 		{
 			assert(color);
 
-			append(buffer, color);
-			append(buffer, prefix);
-			append(buffer, COLOR_RESET);
+			buffer.push(color);
+			buffer.push(prefix);
+			buffer.push(COLOR_RESET);
 		}
 
-		append(buffer, "[");
-		append(buffer, get_filename(loc.file_name()));
-		append(buffer, ":");
-		append(buffer, loc.line());
-		append(buffer, "] ");
+		buffer.push("[");
+		buffer.push(get_filename(loc.file_name()));
+		buffer.push(":");
+		Str::append(buffer, loc.line());
+		buffer.push("] ");
 
-		const char* read_ptr = fmt;
+		Str::format(buffer, fmt, std::forward<Args>(args)...);
 
-		auto process_arg = [&buffer, &read_ptr](const auto& arg)
-		{
-			using T = std::decay_t<decltype(arg)>;
-
-			static_assert(
-				std::is_same_v<T, Str> ||
-				std::is_same_v<T, Str_View> ||
-				std::is_integral_v<T> ||
-				std::is_same_v<T, const char*>,
-				"hstl doesn't know how to log your type"
-			);
-
-			auto next_place_holder = strstr(read_ptr, "{}");
-
-			if (next_place_holder)
-			{
-				buffer.push_range(read_ptr, next_place_holder - read_ptr);
-
-				append(buffer, arg);
-
-				read_ptr = next_place_holder + 2;
-			}
-		};
-
-		// expands to: process_arg(arg1), process_arg(arg2), ...
-		(process_arg(args), ...);
-
-		append(buffer, read_ptr);
-		append(buffer, "\n");
+		buffer.push("\n");
 
 		fwrite(buffer.c_str(), 1, buffer.count(), stdout);
 	}
