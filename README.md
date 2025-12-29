@@ -4,6 +4,7 @@ HSTL is supposed to be an easy-to-read high perofmance stl-like library, it curr
 - Dynamic Array.
 - Hash Set.
 - Hash Map.
+- Str
 - Logging.
 - Error handling that is not exceptions.
 
