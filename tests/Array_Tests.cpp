@@ -33,16 +33,16 @@ TEST_CASE("Array: Basic Operations (int)") {
     hstl::Array<int> arr;
 
     SECTION("Starts empty") {
-        REQUIRE(arr.size() == 0);
+        REQUIRE(arr.count() == 0);
         REQUIRE(arr.capacity() == 0);
     }
 
-    SECTION("Pushing elements increases size") {
+    SECTION("Pushing elements increases count") {
         arr.push(10);
         arr.push(20);
         arr.push(30);
 
-        REQUIRE(arr.size() == 3);
+        REQUIRE(arr.count() == 3);
         REQUIRE(arr[0] == 10);
         REQUIRE(arr[1] == 20);
         REQUIRE(arr[2] == 30);
@@ -56,7 +56,7 @@ TEST_CASE("Array: Memory Management") {
         for (int i = 0; i < 20; ++i) {
             arr.push(i);
         }
-        REQUIRE(arr.size() == 20);
+        REQUIRE(arr.count() == 20);
         REQUIRE(arr.capacity() >= 20);
 
         // verify integrity
@@ -68,7 +68,7 @@ TEST_CASE("Array: Memory Management") {
     SECTION("Reserve allocates memory upfront") {
         arr.reserve(100);
         REQUIRE(arr.capacity() == 100);
-        REQUIRE(arr.size() == 0);
+        REQUIRE(arr.count() == 0);
 
         arr.push(1);
         REQUIRE(arr.capacity() == 100); // Should not have changed
@@ -89,7 +89,7 @@ TEST_CASE("Array: Complex Types (std::string)") {
         // Construct string from count + char: 5 'a's -> "aaaaa"
         arr.emplace(5, 'a');
         REQUIRE(arr[0] == "aaaaa");
-        REQUIRE(arr.size() == 1);
+        REQUIRE(arr.count() == 1);
     }
 }
 
@@ -100,7 +100,7 @@ TEST_CASE("Array: Move Semantics") {
         MoveTracker t(100);
         arr.push(std::move(t));
 
-        REQUIRE(arr.size() == 1);
+        REQUIRE(arr.count() == 1);
         REQUIRE(arr[0].value == 100);
         REQUIRE(t.moved_from == true); // Verify the source was pillaged
     }
@@ -119,7 +119,7 @@ TEST_CASE("Array: Move Semantics") {
         auto ptr = std::make_unique<int>(999);
         ptr_arr.push(std::move(ptr));
 
-        REQUIRE(ptr_arr.size() == 1);
+        REQUIRE(ptr_arr.count() == 1);
         REQUIRE(*ptr_arr[0] == 999);
         REQUIRE(ptr == nullptr); // Original is empty
     }
@@ -134,7 +134,7 @@ TEST_CASE("Array: Removal Strategies", "[array][remove]") {
         // Remove '2' at index 2
         arr.remove_ordered(2);
 
-        REQUIRE(arr.size() == 4);
+        REQUIRE(arr.count() == 4);
         // Expected: [0, 1, 3, 4]
         REQUIRE(arr[0] == 0);
         REQUIRE(arr[1] == 1);
@@ -146,7 +146,7 @@ TEST_CASE("Array: Removal Strategies", "[array][remove]") {
         // Remove '1' at index 1
         arr.remove(1);
 
-        REQUIRE(arr.size() == 4);
+        REQUIRE(arr.count() == 4);
         // Expected: [0, 4, 2, 3] -> Last element (4) moved to index 1
         REQUIRE(arr[0] == 0);
         REQUIRE(arr[1] == 4); // The swap!

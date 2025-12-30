@@ -17,7 +17,7 @@ namespace hstl
 		friend class Str;
 
 	private:
-		size_t count{0u};
+		size_t _count{0u};
 		size_t _capacity{0u};
 		Allocator* allocator;
 		T* data{nullptr};
@@ -34,16 +34,16 @@ namespace hstl
 
 			assert(new_data != nullptr);
 
-			if (data && count > 0 && discard_old_data == false)
+			if (data && _count > 0 && discard_old_data == false)
 			{
 				static_assert(std::is_move_constructible_v<T>, "T must have a move constructor");
 
-				uninitialized_move_range(data, count, new_data);
+				uninitialized_move_range(data, _count, new_data);
 			}
 
 			if (data)
 			{
-				std::destroy_n(data, count);
+				std::destroy_n(data, _count);
 				allocator->deallocate(data, sizeof(T) * _capacity, alignof(T));
 			}
 
@@ -52,7 +52,7 @@ namespace hstl
 
 			if (discard_old_data == true)
 			{
-				count = 0u;
+				_count = 0u;
 			}
 		}
 
@@ -65,7 +65,7 @@ namespace hstl
 
 			T* new_data = static_cast<T*>(allocator->allocate(sizeof(T) * _cap, alignof(T)));
 
-			size_t new_count = std::min(count, _cap);
+			size_t new_count = std::min(_count, _cap);
 
 			if (data && new_count > 0u)
 			{
@@ -76,13 +76,13 @@ namespace hstl
 
 			if (data)
 			{
-				std::destroy_n(data, count);
+				std::destroy_n(data, _count);
 				allocator->deallocate(data, sizeof(T) * _capacity, alignof(T));
 			}
 
 			data = new_data;
 			_capacity = _cap;
-			count = new_count;
+			_count = new_count;
 		}
 
 		void uninitialized_copy_range(T* src, size_t count, T* dst)
@@ -131,29 +131,29 @@ namespace hstl
 
 		};
 
-		Array(size_t _count, Allocator* allocator = Default_Allocator::get()):
+		Array(size_t count, Allocator* allocator = Default_Allocator::get()):
 			allocator{allocator}
 		{
 			static_assert(std::is_default_constructible_v<T>, "T must have a default constructor");
 
-			grow_memory(_count);
+			grow_memory(count);
 
-			uninitialized_value_construct_range(data, _count);
+			uninitialized_value_construct_range(data, count);
 
-			count = _count;
+			_count = count;
 		}
 
 		Array(const Array& source):
-			count{ source.count },
+			_count{source._count},
 			_capacity{source._capacity},
 			allocator{source.allocator},
 			data{static_cast<T*>(source.allocator->allocate(sizeof(T) * source._capacity, alignof(T)))}
 		{
 			static_assert(std::is_copy_constructible_v<T>, "T must have a copy constructor");
 
-			if (source.count > 0u)
+			if (source._count > 0u)
 			{
-				uninitialized_copy_range(source.data, source.count, data);
+				uninitialized_copy_range(source.data, source._count, data);
 			}
 		}
 
@@ -171,52 +171,52 @@ namespace hstl
 				// Destroy the data using the current allocator
 				if (data)
 				{
-					std::destroy_n(data, count);
+					std::destroy_n(data, _count);
 					allocator->deallocate(data, sizeof(T) * _capacity, alignof(T));
 				}
 
 				// Allocate new data using the source allocator
 				T* new_data = nullptr;
 
-				if (source.count > 0u)
+				if (source._count > 0u)
 				{
-					new_data = static_cast<T*>(source.allocator->allocate(sizeof(T) * source.count, alignof(T)));
-					uninitialized_copy_range(source.data, source.count, new_data);
+					new_data = static_cast<T*>(source.allocator->allocate(sizeof(T) * source._count, alignof(T)));
+					uninitialized_copy_range(source.data, source._count, new_data);
 				}
 
 				data = new_data;
 				allocator = source.allocator;
-				_capacity = source.count;
+				_capacity = source._count;
 			}
 			else
 			{
-				if (source.count > _capacity)
+				if (source._count > _capacity)
 				{
-					grow_memory(source.count, true);
+					grow_memory(source._count, true);
 				}
 				else
 				{
-					std::destroy_n(data, count);
+					std::destroy_n(data, _count);
 				}
 
-				if (source.count > 0u)
+				if (source._count > 0u)
 				{
-					uninitialized_copy_range(source.data, source.count, data);
+					uninitialized_copy_range(source.data, source._count, data);
 				}
 			}
 
-			count = source.count;
+			_count = source._count;
 			return *this;
 		}
 
 		Array(Array&& source) noexcept:
-			count{ source.count },
+			_count{ source._count },
 			_capacity{source._capacity},
 			allocator{source.allocator},
 			data{source.data}
 		{
 			source.data = nullptr;
-			source.count = 0u;
+			source._count = 0u;
 			source._capacity = 0u;
 			source.allocator = nullptr;
 		}
@@ -230,17 +230,17 @@ namespace hstl
 
 			if (data)
 			{
-				std::destroy_n(data, count);
+				std::destroy_n(data, _count);
 				allocator->deallocate(data, sizeof(T) * _capacity, alignof(T));
 			}
 
 			data = source.data;
-			count = source.count;
+			_count = source._count;
 			_capacity = source._capacity;
 			allocator = source.allocator;
 
 			source.data = nullptr;
-			source.count = 0u;
+			source._count = 0u;
 			source._capacity = 0u;
 			source.allocator = nullptr;
 
@@ -249,7 +249,7 @@ namespace hstl
 
 		~Array() noexcept
 		{
-			std::destroy_n(data, count);
+			std::destroy_n(data, _count);
 
 			if (data)
 			{
@@ -267,7 +267,7 @@ namespace hstl
 		{
 			static_assert(std::is_default_constructible_v<T>, "T must have a default constructor");
 
-			if (new_count == count)
+			if (new_count == _count)
 			{
 				return;
 			}
@@ -277,44 +277,44 @@ namespace hstl
 				grow_memory(new_count);
 			}
 
-			if (new_count > count)
+			if (new_count > _count)
 			{
-				uninitialized_value_construct_range(data + count, new_count - count);
+				uninitialized_value_construct_range(data + _count, new_count - _count);
 			}
 			else
 			{
-				std::destroy_n(data + new_count, count - new_count);
+				std::destroy_n(data + new_count, _count - new_count);
 			}
 
-			count = new_count;
+			_count = new_count;
 		}
 
 		T& push(const T& element)
 		{
 			static_assert(std::is_copy_constructible_v<T>, "T must have a copy constructor");
 
-			if (count == _capacity)
+			if (_count == _capacity)
 			{
 				grow_memory(_capacity == 0u ? 10u : _capacity * 2u);
 			}
 
-			new(&data[count++]) T(element);
+			new(&data[_count++]) T(element);
 
-			return data[count - 1];
+			return data[_count - 1];
 		}
 
 		T& push(T&& element)
 		{
 			static_assert(std::is_move_constructible_v<T>, "T must have a move constructor");
 
-			if (count == _capacity)
+			if (_count == _capacity)
 			{
 				grow_memory(_capacity == 0u ? 10u : _capacity * 2u);
 			}
 
-			new(&data[count++]) T(std::move(element));
+			new(&data[_count++]) T(std::move(element));
 
-			return data[count - 1];
+			return data[_count - 1];
 		}
 
 		template<typename... Args>
@@ -322,21 +322,21 @@ namespace hstl
 		{
 			static_assert(std::is_constructible_v<T, Args...>, "T doesn't have a constructor that matches the provided arguments");
 
-			if (count == _capacity)
+			if (_count == _capacity)
 			{
 				grow_memory(_capacity == 0u ? 10u : _capacity * 2u);
 			}
 
-			new (&data[count++]) T(std::forward<Args>(args)...);
+			new (&data[_count++]) T(std::forward<Args>(args)...);
 
-			return data[count - 1];
+			return data[_count - 1];
 		}
 
 		void shrink_to_fit()
 		{
-			if (_capacity > count)
+			if (_capacity > _count)
 			{
-				shrink_memory(count);
+				shrink_memory(_count);
 			}
 		}
 
@@ -344,42 +344,42 @@ namespace hstl
 		{
 		    if constexpr (std::is_scalar_v<T>)
 		    {
-		    	memcpy(&data[index], &data[count - 1], sizeof(T));
+		    	memcpy(&data[index], &data[_count - 1], sizeof(T));
 		    }
 		    else
 		    {
-		        if (index < count - 1)
+		        if (index < _count - 1)
 		        {
 					static_assert(std::is_move_assignable_v<T>, "T must have a move assignment operator");
 
-		        	data[index] = std::move(data[count - 1]);
+		        	data[index] = std::move(data[_count - 1]);
 		        }
 
-		       	std::destroy_at(&data[count - 1]);
+		       	std::destroy_at(&data[_count - 1]);
 		    }
 
-		    --count;
+		    _count--;
 		}
 
 		void remove_ordered(size_t index)
 		{
             if constexpr (std::is_scalar_v<T>)
             {
-                memmove(&data[index], &data[index + 1], sizeof(T) * (count - index - 1));
+                memmove(&data[index], &data[index + 1], sizeof(T) * (_count - index - 1));
             }
             else
             {
-                for (size_t i = index; i < count - 1; ++i)
+                for (size_t i = index; i < _count - 1; ++i)
                 {
 					static_assert(std::is_move_assignable_v<T>, "T must have a move assignment operator");
 
                 	data[i] = std::move(data[i + 1]);
                 }
 
-                std::destroy_at(&data[count - 1]);
+                std::destroy_at(&data[_count - 1]);
             }
 
-			count--;
+			_count--;
 		}
 
 		template<typename F>
@@ -390,12 +390,12 @@ namespace hstl
 			// NOTE: This type trait will check if the result of F is __convertable__ to bool
 			// I'm not sure if this is desired but roll with it for now
 			static_assert(std::is_invocable_r_v<bool, F, const T&>, "Predicate must be callable as bool(const T&)");
-			if (count == 0)
+			if (_count == 0)
 				return;
 
 			// FIXME: int64_t here is a narrowing conversion used to avoid underflow
-			int64_t last_survivior = count - 1;
-			for (int64_t i = count - 1; i >= 0; --i)
+			int64_t last_survivior = _count - 1;
+			for (int64_t i = _count - 1; i >= 0; --i)
 			{
 				if (f(data[i]) == false)
 					continue;
@@ -423,7 +423,7 @@ namespace hstl
 				last_survivior--;
 			}
 
-			count = last_survivior + 1;
+			_count = last_survivior + 1;
 		}
 
 		const_iterator begin() const noexcept
@@ -433,7 +433,7 @@ namespace hstl
 
 		const_iterator end() const noexcept
 		{
-			return data + count;
+			return data + _count;
 		}
 
 		iterator begin() noexcept
@@ -443,14 +443,14 @@ namespace hstl
 
 		iterator end() noexcept
 		{
-			return data + count;
+			return data + _count;
 		}
 
 		void clear() noexcept
 		{
-			std::destroy_n(data, count);
+			std::destroy_n(data, _count);
 
-			count = 0;
+			_count = 0;
 		}
 
 		const T* buffer() const { return data; }
@@ -468,7 +468,7 @@ namespace hstl
 		}
 
 		// TODO: Rename to count
-		size_t size() const { return count; }
+		size_t count() const { return _count; }
 
 		size_t capacity() const { return _capacity; }
 	};

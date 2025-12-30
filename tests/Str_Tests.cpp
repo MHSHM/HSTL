@@ -225,7 +225,7 @@ TEST_CASE("Str_View: split") {
         hstl::Str s("a,b,c");
         auto splits = s.split(',');
 
-        REQUIRE(splits.size() == 3);
+        REQUIRE(splits.count() == 3);
         REQUIRE(is_equal(splits[0], "a"));
         REQUIRE(is_equal(splits[1], "b"));
         REQUIRE(is_equal(splits[2], "c"));
@@ -235,7 +235,7 @@ TEST_CASE("Str_View: split") {
         hstl::Str s("a,,b");
         auto splits = s.split(',');
 
-        REQUIRE(splits.size() == 3);
+        REQUIRE(splits.count() == 3);
         REQUIRE(is_equal(splits[0], "a"));
         REQUIRE(is_equal(splits[1], "")); // Empty view between commas
         REQUIRE(is_equal(splits[2], "b"));
@@ -245,7 +245,7 @@ TEST_CASE("Str_View: split") {
         hstl::Str s(",a");
         auto splits = s.split(',');
 
-        REQUIRE(splits.size() == 2);
+        REQUIRE(splits.count() == 2);
         REQUIRE(is_equal(splits[0], ""));
         REQUIRE(is_equal(splits[1], "a"));
     }
@@ -254,7 +254,7 @@ TEST_CASE("Str_View: split") {
         hstl::Str s("a,");
         auto splits = s.split(',');
 
-        REQUIRE(splits.size() == 2);
+        REQUIRE(splits.count() == 2);
         REQUIRE(is_equal(splits[0], "a"));
         REQUIRE(is_equal(splits[1], ""));
     }
@@ -263,7 +263,7 @@ TEST_CASE("Str_View: split") {
         hstl::Str s("abc");
         auto splits = s.split(',');
 
-        REQUIRE(splits.size() == 1);
+        REQUIRE(splits.count() == 1);
         REQUIRE(is_equal(splits[0], "abc"));
     }
 
@@ -272,7 +272,7 @@ TEST_CASE("Str_View: split") {
         auto splits = s.split(',');
 
         // Should return one empty token
-        REQUIRE(splits.size() == 1);
+        REQUIRE(splits.count() == 1);
         REQUIRE(is_equal(splits[0], ""));
     }
 
@@ -282,7 +282,7 @@ TEST_CASE("Str_View: split") {
 
         // "," -> ["", ""]
         // ",," -> ["", "", ""]
-        REQUIRE(splits.size() == 3);
+        REQUIRE(splits.count() == 3);
         REQUIRE(is_equal(splits[0], ""));
         REQUIRE(is_equal(splits[1], ""));
         REQUIRE(is_equal(splits[2], ""));

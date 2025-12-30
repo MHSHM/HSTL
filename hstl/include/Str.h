@@ -406,7 +406,7 @@ namespace hstl
 		{
 			data.push(ch);
 
-			auto count = data.count;
+			auto count = data._count;
 
 			std::swap(data[count - 1], data[count - 2]);
 
@@ -421,7 +421,7 @@ namespace hstl
 			}
 
 			size_t count = strlen(str);
-			size_t old_count = data.count;
+			size_t old_count = data._count;
 			size_t required_count = old_count + count;
 
 			if (required_count > data._capacity)
@@ -431,17 +431,17 @@ namespace hstl
 
 			memcpy(data.data + (old_count - 1), str, sizeof(char) * count);
 
-			data.count += count;
+			data._count += count;
 
-			data[data.count - 1] = '\0';
+			data[data._count - 1] = '\0';
 
 			return Str_View{data.data + old_count - 1u, count};
 		}
 
 		Str_View push_n(char ch, size_t n)
 		{
-			size_t required_count = data.count + n;
-			size_t old_count = data.count;
+			size_t required_count = data._count + n;
+			size_t old_count = data._count;
 
 			if (required_count > data._capacity)
 			{
@@ -450,9 +450,9 @@ namespace hstl
 
 			memset(data.data + old_count - 1u, ch, sizeof(char) * n);
 
-			data.count += n;
+			data._count += n;
 
-			data[data.count - 1] = '\0';
+			data[data._count - 1] = '\0';
 
 			return Str_View{data.data + old_count - 1u, n};
 		}
@@ -462,8 +462,8 @@ namespace hstl
 		{
 			assert(start);
 
-			size_t required_count = length + data.count;
-			size_t old_count = data.count;
+			size_t required_count = length + data._count;
+			size_t old_count = data._count;
 
 			if (required_count > data._capacity)
 			{
@@ -472,16 +472,16 @@ namespace hstl
 
 			memcpy(data.data + old_count - 1u, start, sizeof(char) * length);
 
-			data.count += length;
+			data._count += length;
 
-			data[data.count - 1] = '\0';
+			data[data._count - 1] = '\0';
 
 			return Str_View{data.data + old_count - 1, length};
 		}
 
 		void resize(size_t count, char ch)
 		{
-			size_t old_count = data.count;
+			size_t old_count = data._count;
 			size_t new_count = count + 1;
 
 			if (count == 0u)
@@ -527,7 +527,7 @@ namespace hstl
 
 		size_t count() const
 		{
-			return data.count - 1;
+			return data._count - 1;
 		}
 
 		const char* c_str() const
@@ -537,7 +537,7 @@ namespace hstl
 
 		void clear()
 		{
-			data.count = 1u;
+			data._count = 1u;
 			data[0] = '\0';
 		}
 
@@ -545,7 +545,7 @@ namespace hstl
 		// any modifications to the source string can cause the view to be invalid
 		const Str_View view() const
 		{
-			return Str_View{data.data, data.count - 1u};
+			return Str_View{data.data, data._count - 1u};
 		}
 
 		size_t find(const char* substr) const
@@ -588,7 +588,7 @@ namespace hstl
 		char& operator[](size_t index)
 		{
 			assert(empty() == false);
-			assert(index < data.count);
+			assert(index < data._count);
 
 			return data[index];
 		}
@@ -596,7 +596,7 @@ namespace hstl
 		const char& operator[](size_t index) const
 		{
 			assert(empty() == false);
-			assert(index < data.count);
+			assert(index < data._count);
 
 			return data[index];
 		}
@@ -622,7 +622,7 @@ namespace hstl
 				}
 
 				*write_ptr = '\0';
-				data.count = (write_ptr - begin()) + 1u;
+				data._count = (write_ptr - begin()) + 1u;
 			}
 			else
 			{
@@ -653,18 +653,18 @@ namespace hstl
 
 			if (loc != npos)
 			{
-				memmove(data.data + loc, data.data + (loc + length), data.count - (loc + length));
-				data.count -= length;
+				memmove(data.data + loc, data.data + (loc + length), data._count - (loc + length));
+				data._count -= length;
 			}
 		}
 
 		Str_View insert(const char* substr, size_t pos)
 		{
 			assert(substr);
-			assert(pos <= data.count - 1);
+			assert(pos <= data._count - 1);
 
 			auto str_length = strlen(substr);
-			auto required_size = data.count + str_length;
+			auto required_size = data._count + str_length;
 
 			if (required_size > data._capacity)
 			{
@@ -672,12 +672,12 @@ namespace hstl
 			}
 
 			// make way
-			memmove(data.data + pos + str_length, data.data + pos, data.count - pos);
+			memmove(data.data + pos + str_length, data.data + pos, data._count - pos);
 
 			// put the new substr
 			memcpy(data.data + pos, substr, sizeof(char) * str_length);
 
-			data.count += str_length;
+			data._count += str_length;
 
 			return Str_View{data.data + pos, str_length};
 		}
@@ -690,7 +690,7 @@ namespace hstl
 
 		bool empty() const
 		{
-			return data.count == 1u;
+			return data._count == 1u;
 		}
 	};
 };

@@ -50,11 +50,11 @@ namespace hstl
 
 		void grow_then_rehash()
 		{
-			size_t new_size = states.size() * GROWTH_FACTOR;
+			size_t new_size = states.count() * GROWTH_FACTOR;
 			auto new_states_list = Array<uint8_t>{new_size, allocator};
 			auto new_values_list = static_cast<T*>(allocator->allocate(new_size * sizeof(T), alignof(T)));
 
-			for (size_t i = 0u; i < states.size(); ++i)
+			for (size_t i = 0u; i < states.count(); ++i)
 			{
 				if (!is_empty(states[i]))
 				{
@@ -72,7 +72,7 @@ namespace hstl
 					std::destroy_at(&values[i]);
 				}
 			}
-			allocator->deallocate(values, sizeof(T) * states.size(), alignof(T));
+			allocator->deallocate(values, sizeof(T) * states.count(), alignof(T));
 
 			states = std::move(new_states_list);
 			values = new_values_list;
@@ -84,7 +84,7 @@ namespace hstl
 			{
 				if (filled_buckets > 0u)
 				{
-					size_t count = states.size();
+					size_t count = states.count();
 
 					for (size_t i = 0; i < count; ++i)
 					{
@@ -98,7 +98,7 @@ namespace hstl
 
 			if (values)
 			{
-				allocator->deallocate(values, sizeof(T) * states.size(), alignof(T));
+				allocator->deallocate(values, sizeof(T) * states.count(), alignof(T));
 			}
 		}
 
@@ -121,7 +121,7 @@ namespace hstl
 			allocator{source.allocator},
 			states{source.states}
 		{
-			size_t count = source.states.size();
+			size_t count = source.states.count();
 
 			values = static_cast<T*>(allocator->allocate(count * sizeof(T), alignof(T)));
 
@@ -150,7 +150,7 @@ namespace hstl
 
 			destroy_values();
 
-			size_t count = source.states.size();
+			size_t count = source.states.count();
 
 			values = static_cast<T*>(source.allocator->allocate(count * sizeof(T), alignof(T)));
 
@@ -223,7 +223,7 @@ namespace hstl
 		template<typename K>
 		T& insert(K&& key)
 		{
-			auto size = states.size();
+			auto size = states.count();
 
 			if (filled_buckets >= static_cast<size_t>(LOAD_FACTOR * size))
 			{
@@ -265,7 +265,7 @@ namespace hstl
 				return nullptr;
 			}
 
-			auto size = states.size();
+			auto size = states.count();
 			auto mask = size - 1u;
 			auto hash = hasher(key);
 			uint8_t control_byte = make_control_byte(hash);
@@ -304,7 +304,7 @@ namespace hstl
 				return false;
 			}
 
-			auto _size = states.size();
+			auto _size = states.count();
 			auto mask = (_size - 1u);
 			auto hash = hasher(key);
 			auto hole_control_byte = make_control_byte(hash);
@@ -359,7 +359,7 @@ namespace hstl
 		}
 
 		size_t count() const { return filled_buckets; }
-		size_t capacity() const { return states.size(); }
+		size_t capacity() const { return states.count(); }
 
 	public: // Iterator-related
 		class Iterator // Input Iterator
@@ -431,7 +431,7 @@ namespace hstl
 		{
 			auto s_end = states.end();
 
-			return Iterator{s_end, values + states.size(), s_end};
+			return Iterator{s_end, values + states.count(), s_end};
 		}
 	};
 };
