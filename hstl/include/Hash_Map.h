@@ -1,4 +1,5 @@
 #include "Array.h"
+#include "Memory.h"
 
 #include <functional>
 #include <utility>
@@ -42,8 +43,9 @@ namespace hstl
 		Eq equalizer;
 		Hash hasher;
 		size_t filled_buckets{0u};
-		Array<uint8_t> states;
 		Slot* slots{nullptr};
+		Allocator* allocator;
+		Array<uint8_t> states;
 
 	private:
 		void destroy_slots()
@@ -63,14 +65,18 @@ namespace hstl
 					}
 				}
 			}
-			::operator delete(slots);
+
+			if (slots)
+			{	
+				allocator->deallocate(slots, sizeof(Slot) * states.size(), alignof(Slot));
+			}
 		}
 
 		void grow_then_rehash()
 		{
 			size_t new_size = states.size() * GROWTH_FACTOR;
-			auto new_states_list = Array<uint8_t>{new_size};
-			auto new_slots_list = static_cast<Slot*>(::operator new(new_size * sizeof(Slot)));
+			auto new_states_list = Array<uint8_t>{new_size, allocator};
+			auto new_slots_list = static_cast<Slot*>(allocator->allocate(new_size * sizeof(Slot), alignof(Slot)));
 
 			for (size_t i = 0u; i < states.size(); ++i)
 			{
@@ -90,31 +96,34 @@ namespace hstl
 					std::destroy_at(&slots[i]);
 				}
 			}
-			::operator delete(slots);
+			allocator->deallocate(slots, sizeof(Slot) * states.size(), alignof(Slot));
 
 			states = std::move(new_states_list);
 			slots = new_slots_list;
 		}
 
 	public:
-		Hash_Map()
+		Hash_Map(Allocator* allocator = Default_Allocator::get()):
+			allocator{allocator},
+			states{allocator}
 		{
 			size_t count = GROWTH_SIZE * GROWTH_FACTOR;
 
 			states.resize(count);
 
-			slots = static_cast<Slot*>(::operator new(count * sizeof(Slot)));
+			slots = static_cast<Slot*>(allocator->allocate(count * sizeof(Slot), alignof(Slot)));
 		}
 
 		Hash_Map(const Hash_Map& other):
 			equalizer{other.equalizer},
 			hasher{other.hasher},
 			filled_buckets{other.filled_buckets},
+			allocator{other.allocator},
 			states{other.states}
 		{
 			size_t count = other.states.size();
 
-			slots = static_cast<Slot*>(::operator new(sizeof(Slot) * count));
+			slots = static_cast<Slot*>(allocator->allocate(count * sizeof(Slot), alignof(Slot)));
 
 			if constexpr (std::is_trivially_copyable_v<Slot>)
 			{
@@ -132,38 +141,39 @@ namespace hstl
 			}
 		}
 
-		Hash_Map& operator=(const Hash_Map& other)
+		Hash_Map& operator=(const Hash_Map& source)
 		{
-			if (this == &other)
+			if (this == &source)
 			{
 				return *this;
 			}
 
 			destroy_slots();
 
-			size_t count = other.states.size();
+			size_t count = source.states.size();
 
-			slots = static_cast<Slot*>(::operator new(sizeof(Slot) * count));
+			slots = static_cast<Slot*>(source.allocator->allocate(count * sizeof(Slot), alignof(Slot)));
 
 			if constexpr (std::is_trivially_copyable_v<Slot>)
 			{
-				memcpy(slots, other.slots, sizeof(Slot) * count);
+				memcpy(slots, source.slots, sizeof(Slot) * count);
 			}
 			else
 			{
 				for (size_t i = 0u; i < count; ++i)
 				{
-					if (!is_empty(other.states[i]))
+					if (!is_empty(source.states[i]))
 					{
-						new (&slots[i]) Slot(other.slots[i]);
+						new (&slots[i]) Slot(source.slots[i]);
 					}
 				}
 			}
 
-			equalizer = other.equalizer;
-			hasher = other.hasher;
-			filled_buckets = other.filled_buckets;
-			states = other.states;
+			equalizer = source.equalizer;
+			hasher = source.hasher;
+			filled_buckets = source.filled_buckets;
+			allocator = source.allocator;
+			states = source.states;
 
 			return *this;
 		}
@@ -172,11 +182,13 @@ namespace hstl
 			equalizer{std::move(other.equalizer)},
 			hasher{std::move(other.hasher)},
 			filled_buckets{other.filled_buckets},
-			states{std::move(other.states)},
-			slots{other.slots}
+			allocator{other.allocator},
+			slots{other.slots},
+			states{std::move(other.states)}
 		{
 			other.slots = nullptr;
 			other.filled_buckets = 0u;
+			other.allocator = nullptr;
 		}
 
 		Hash_Map& operator=(Hash_Map&& other)
@@ -192,10 +204,12 @@ namespace hstl
 			hasher = std::move(other.hasher);
 			filled_buckets = other.filled_buckets;
 			states = std::move(other.states);
+			allocator = other.allocator;
 			slots = other.slots;
 
 			other.slots = nullptr;
 			other.filled_buckets = 0u;
+			other.allocator = nullptr;
 
 			return *this;
 		}
