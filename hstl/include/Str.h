@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Array.h"
+#include "Memory.h"
 
 #include <assert.h>
 #include <stdio.h>
@@ -355,13 +356,15 @@ namespace hstl
 	public:
 		static constexpr size_t npos = static_cast<size_t>(-1);
 
-		Str()
+		explicit Str(Allocator* allocator = Default_Allocator::get()):
+			data{allocator}
 		{
 			init_empty_string();
 		};
 
 		// Expects a null-terminated string
-		Str(const char* c_str)
+		Str(const char* c_str, Allocator* allocator = Default_Allocator::get()):
+			data{allocator}
 		{
 			if (c_str == nullptr)
 			{
@@ -376,7 +379,8 @@ namespace hstl
 			memcpy(data.data, c_str, string_len + 1);
 		}
 
-		Str(char ch, size_t count)
+		Str(char ch, size_t count, Allocator* allocator = Default_Allocator::get()):
+			data{allocator}
 		{
 			if (count == 0)
 			{

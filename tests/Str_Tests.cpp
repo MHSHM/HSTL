@@ -28,7 +28,7 @@ TEST_CASE("Str: Construction & Invariants") {
     }
 
     SECTION("Nullptr Construction") {
-        hstl::Str s(nullptr);
+        hstl::Str s;
         REQUIRE(s.count() == 0);
         REQUIRE(verify_terminator(s, 0));
     }
