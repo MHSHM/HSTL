@@ -27,6 +27,7 @@ namespace hstl
 
 		void deallocate(void* ptr, size_t size, size_t alignment = alignof(std::max_align_t)) override
 		{
+			assert(ptr); // hmmm, maybe we should make it no-op?
 			::operator delete(ptr, size, std::align_val_t(alignment));
 		}
 
@@ -72,6 +73,7 @@ namespace hstl
 
 			if (aligned_offset + size > capacity)
 			{
+				assert(false && "Allocator ran out of memory");
 				return nullptr;
 			}
 
@@ -153,6 +155,7 @@ namespace hstl
 		}
 
 		// NOTE: size and alignment are ingored as they're known by the allocator design
+		// maybe the pool allocator should be its own thing
 		[[nodiscard]]
 		void* allocate(size_t size = 0u, size_t alignment = alignof(std::max_align_t)) override
 		{
@@ -168,6 +171,7 @@ namespace hstl
 		}
 
 		// NOTE: size and alignment are ingored as they're known by the allocator design
+		// maybe the pool allocator should be its own thing
 		void deallocate(void* ptr, size_t size = 0u, size_t alignment = alignof(std::max_align_t)) override
 		{
 			char* start = static_cast<char*>(memory_block);

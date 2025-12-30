@@ -1,10 +1,11 @@
 #pragma once
 
 #include <type_traits>
-#include <exception>
-#include <stdexcept>
 #include <memory>
 #include <algorithm>
+#include <assert.h>
+
+#include "Memory.h"
 
 namespace hstl
 {
@@ -15,13 +16,123 @@ namespace hstl
 	{
 		friend class Str;
 
+	private:
+		size_t count{0u};
+		size_t _capacity{0u};
+		Allocator* allocator;
+		T* data{nullptr};
+
+	private:
+		void grow_memory(size_t _cap, bool discard_old_data = false)
+		{
+			if (_cap <= _capacity)
+			{
+				return;
+			}
+
+			T* new_data = static_cast<T*>(allocator->allocate(sizeof(T) * _cap, alignof(T)));
+
+			assert(new_data != nullptr);
+
+			if (data && count > 0 && discard_old_data == false)
+			{
+				static_assert(std::is_move_constructible_v<T>, "T must have a move constructor");
+
+				uninitialized_move_range(data, count, new_data);
+			}
+
+			if (data)
+			{
+				std::destroy_n(data, count);
+				allocator->deallocate(data, sizeof(T) * _capacity, alignof(T));
+			}
+
+			data = new_data;
+			_capacity = _cap;
+
+			if (discard_old_data == true)
+			{
+				count = 0u;
+			}
+		}
+
+		void shrink_memory(size_t _cap)
+		{
+			if (_cap >= _capacity)
+			{
+				return;
+			}
+
+			T* new_data = static_cast<T*>(allocator->allocate(sizeof(T) * _cap, alignof(T)));
+
+			size_t new_count = std::min(count, _cap);
+
+			if (data && new_count > 0u)
+			{
+				static_assert(std::is_move_constructible_v<T>, "T must have a move constructor");
+
+				uninitialized_move_range(data, new_count, new_data);
+			}
+
+			if (data)
+			{
+				std::destroy_n(data, count);
+				allocator->deallocate(data, sizeof(T) * _capacity, alignof(T));
+			}
+
+			data = new_data;
+			_capacity = _cap;
+			count = new_count;
+		}
+
+		void uninitialized_copy_range(T* src, size_t count, T* dst)
+		{
+			if constexpr (std::is_scalar_v<T> == true)
+			{
+				memcpy(dst, src, sizeof(T) * count);
+			}
+			else
+			{
+				std::uninitialized_copy_n(src, count, dst);
+			}
+		}
+
+        void uninitialized_move_range(T* src, size_t count, T* dst)
+        {
+            if constexpr (std::is_scalar_v<T> == true)
+            {
+                memcpy(dst, src, sizeof(T) * count);
+            }
+            else
+            {
+                std::uninitialized_move_n(src, count, dst);
+            }
+        }
+
+		void uninitialized_value_construct_range(T* start, size_t count)
+		{
+			if constexpr (std::is_scalar_v<T> == true)
+			{
+				memset(start, 0, sizeof(T) * count);
+			}
+			else
+			{
+				std::uninitialized_value_construct_n(start, count);
+			}
+		}
+
 	public:
 		using iterator = T*;
 		using const_iterator = const T*;
 
-		Array() = default;
+		Array(Allocator* allocator = Default_Allocator::get()):
+			allocator{allocator}
+		{
 
-		Array(size_t _count)
+		};
+
+		Array(size_t _count, Allocator* allocator = Default_Allocator::get()):
+			allocator{allocator}
 		{
 			static_assert(std::is_default_constructible_v<T>, "T must have a default constructor");
 
@@ -33,15 +144,15 @@ namespace hstl
 		}
 
 		Array(const Array& source):
-			data{static_cast<T*>(::operator new(source._capacity * sizeof(T)))},
-			count{source.count},
-			_capacity{source._capacity}
+			count{ source.count },
+			_capacity{source._capacity},
+			allocator{source.allocator},
+			data{static_cast<T*>(source.allocator->allocate(sizeof(T) * source._capacity, alignof(T)))}
 		{
 			static_assert(std::is_copy_constructible_v<T>, "T must have a copy constructor");
 
 			if (source.count > 0u)
 			{
-				// FIXME: If this throws we will leak "data"
 				uninitialized_copy_range(source.data, source.count, data);
 			}
 		}
@@ -77,13 +188,15 @@ namespace hstl
 		}
 
 		Array(Array&& source) noexcept:
-			data{source.data},
-			count{source.count},
-			_capacity{source._capacity}
+			count{ source.count },
+			_capacity{source._capacity},
+			allocator{source.allocator},
+			data{source.data}
 		{
 			source.data = nullptr;
 			source.count = 0u;
 			source._capacity = 0u;
+			source.allocator = nullptr;
 		}
 
 		Array& operator=(Array&& source) noexcept
@@ -93,16 +206,21 @@ namespace hstl
 				return *this;
 			}
 
-			std::destroy_n(data, count);
-			::operator delete(data);
+			if (data)
+			{
+				std::destroy_n(data, count);
+				allocator->deallocate(data, sizeof(T) * _capacity, alignof(T));
+			}
 
 			data = source.data;
 			count = source.count;
 			_capacity = source._capacity;
+			allocator = source.allocator;
 
 			source.data = nullptr;
 			source.count = 0u;
 			source._capacity = 0u;
+			source.allocator = nullptr;
 
 			return *this;
 		}
@@ -110,7 +228,11 @@ namespace hstl
 		~Array() noexcept
 		{
 			std::destroy_n(data, count);
-			::operator delete(data);
+
+			if (data)
+			{
+				allocator->deallocate(data, sizeof(T) * _capacity, alignof(T));
+			}
 		}
 
 	public:
@@ -327,101 +449,5 @@ namespace hstl
 		size_t size() const { return count; }
 
 		size_t capacity() const { return _capacity; }
-
-	private:
-		void grow_memory(size_t _cap, bool discard_old_data = false)
-		{
-			if (_cap <= _capacity)
-			{
-				return;
-			}
-
-			T* new_data = static_cast<T*>(::operator new(sizeof(T) * _cap));
-
-			if (data && count > 0 && discard_old_data == false)
-			{
-				static_assert(std::is_move_constructible_v<T>, "T must have a move constructor");
-
-				uninitialized_move_range(data, count, new_data);
-			}
-
-			std::destroy_n(data, count);
-			::operator delete(data);
-
-			data = new_data;
-			_capacity = _cap;
-
-			if (discard_old_data == true)
-			{
-				count = 0u;
-			}
-		}
-
-		void shrink_memory(size_t _cap)
-		{
-			if (_cap >= _capacity)
-			{
-				return;
-			}
-
-			T* new_data = static_cast<T*>(::operator new(sizeof(T) * _cap));
-
-			size_t new_count = std::min(count, _cap);
-
-			if (data && new_count > 0u)
-			{
-				static_assert(std::is_move_constructible_v<T>, "T must have a move constructor");
-
-				uninitialized_move_range(data, new_count, new_data);
-			}
-
-			std::destroy_n(data, count);
-			::operator delete(data);
-
-			data = new_data;
-			_capacity = _cap;
-			count = new_count;
-		}
-
-		void uninitialized_copy_range(T* src, size_t count, T* dst)
-		{
-			if constexpr (std::is_scalar_v<T> == true)
-			{
-				memcpy(dst, src, sizeof(T) * count);
-			}
-			else
-			{
-				std::uninitialized_copy_n(src, count, dst);
-			}
-		}
-
-        void uninitialized_move_range(T* src, size_t count, T* dst)
-        {
-            if constexpr (std::is_scalar_v<T> == true)
-            {
-                memcpy(dst, src, sizeof(T) * count);
-            }
-            else
-            {
-                std::uninitialized_move_n(src, count, dst);
-            }
-        }
-
-		void uninitialized_value_construct_range(T* start, size_t count)
-		{
-			if constexpr (std::is_scalar_v<T> == true)
-			{
-				memset(start, 0, sizeof(T) * count);
-			}
-			else
-			{
-				std::uninitialized_value_construct_n(start, count);
-			}
-		}
-
-	private:
-		T* data{nullptr};
-		size_t count{0u};
-		size_t _capacity{0u};
 	};
 };
