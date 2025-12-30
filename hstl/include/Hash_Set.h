@@ -18,11 +18,13 @@ namespace hstl
 		// The MSB (Most Significant Bit) marks a slot as OCCUPIED.
 		// 0b1xxxxxxx = Occupied
 		// 0b0xxxxxxx = Empty
+		// The rest 7 bits will carry the hash fingerprint
 		static constexpr uint8_t BIT_OCCUPIED = 0b10000000;
 
 		Eq equalizer;
 		Hash hasher;
 		size_t filled_buckets{0u};
+		Allocator* allocator;
 		Array<uint8_t> states;
 		T* values{nullptr};
 
@@ -49,8 +51,8 @@ namespace hstl
 		void grow_then_rehash()
 		{
 			size_t new_size = states.size() * GROWTH_FACTOR;
-			auto new_states_list = Array<uint8_t>{new_size};
-			auto new_values_list = static_cast<T*>(::operator new(new_size * sizeof(T)));
+			auto new_states_list = Array<uint8_t>{new_size, allocator};
+			auto new_values_list = static_cast<T*>(allocator->allocate(new_size * sizeof(T), alignof(T)));
 
 			for (size_t i = 0u; i < states.size(); ++i)
 			{
@@ -70,7 +72,7 @@ namespace hstl
 					std::destroy_at(&values[i]);
 				}
 			}
-			::operator delete(values);
+			allocator->deallocate(values, sizeof(T) * states.size(), alignof(T));
 
 			states = std::move(new_states_list);
 			values = new_values_list;
@@ -93,109 +95,121 @@ namespace hstl
 					}
 				}
 			}
-			::operator delete(values);
+
+			if (values)
+			{
+				allocator->deallocate(values, sizeof(T) * states.size(), alignof(T));
+			}
 		}
 
 	public:
-		Hash_Set()
+		Hash_Set(Allocator* allocator = Default_Allocator::get()):
+			allocator{allocator},
+			states{allocator}
 		{
 			size_t count = GROWTH_SIZE * GROWTH_FACTOR;
 
 			states.resize(count);
 
-			values = static_cast<T*>(::operator new(count * sizeof(T)));
+			values = static_cast<T*>(allocator->allocate(count * sizeof(T), alignof(T)));
 		}
 
-		Hash_Set(const Hash_Set& other):
-			equalizer{other.equalizer},
-			hasher{other.hasher},
-			filled_buckets{other.filled_buckets},
-			states{other.states}
+		Hash_Set(const Hash_Set& source):
+			equalizer{source.equalizer},
+			hasher{source.hasher},
+			filled_buckets{source.filled_buckets},
+			allocator{source.allocator},
+			states{source.states}
 		{
-			size_t count = other.states.size();
+			size_t count = source.states.size();
 
-			values = static_cast<T*>(::operator new(count * sizeof(T)));
+			values = static_cast<T*>(allocator->allocate(count * sizeof(T), alignof(T)));
 
 			if constexpr (std::is_trivially_copyable_v<T> == true)
 			{
-				memcpy(values, other.values, sizeof(T) * count);
+				memcpy(values, source.values, sizeof(T) * count);
 			}
 			else
 			{
 				for (size_t i = 0u; i < count; ++i)
 				{
-					if (is_empty(other.states[i]))
-						continue;
-
-					new (&values[i]) T(other.values[i]);
+					if (!is_empty(source.states[i]))
+					{
+						new (&values[i]) T(source.values[i]);
+					}
 				}
 			}
 		}
 
-		Hash_Set& operator=(const Hash_Set& other)
+		Hash_Set& operator=(const Hash_Set& source)
 		{
-			if (this == &other)
+			if (this == &source)
 			{
 				return *this;
 			}
 
 			destroy_values();
 
-			size_t count = other.states.size();
+			size_t count = source.states.size();
 
-			values = static_cast<T*>(::operator new(count * sizeof(T)));
+			values = static_cast<T*>(source.allocator->allocate(count * sizeof(T), alignof(T)));
 
 			if constexpr (std::is_trivially_copyable_v<T> == true)
 			{
-				memcpy(values, other.values, sizeof(T) * count);
+				memcpy(values, source.values, sizeof(T) * count);
 			}
 			else
 			{
 				for (size_t i = 0u; i < count; ++i)
 				{
-					if (is_empty(other.states[i]))
-						continue;
-
-					new (&values[i]) T(other.values[i]);
+					if (!is_empty(source.states[i]))
+					{
+						new (&values[i]) T(source.values[i]);
+					}
 				}
 			}
 
-			equalizer = other.equalizer;
-			hasher = other.hasher;
-			filled_buckets = other.filled_buckets;
-			states = other.states;
+			equalizer = source.equalizer;
+			hasher = source.hasher;
+			filled_buckets = source.filled_buckets;
+			allocator = source.allocator;
+			states = source.states;
 
 			return *this;
 		}
 
-		Hash_Set(Hash_Set&& other):
-			equalizer{std::move(other.equalizer)},
-			hasher{std::move(other.hasher)},
-			filled_buckets{other.filled_buckets},
-			states{std::move(other.states)},
-			values{other.values}
+		Hash_Set(Hash_Set&& source):
+			equalizer{std::move(source.equalizer)},
+			hasher{std::move(source.hasher)},
+			filled_buckets{source.filled_buckets},
+			allocator{source.allocator},
+			states{std::move(source.states)},
+			values{source.values}
 		{
-			other.values = nullptr;
-			other.filled_buckets = 0u;
+			source.values = nullptr;
+			source.filled_buckets = 0u;
+			source.allocator = nullptr;
 		}
 
-		Hash_Set& operator=(Hash_Set&& other)
+		Hash_Set& operator=(Hash_Set&& source)
 		{
-			if (this == &other)
+			if (this == &source)
 			{
 				return *this;
 			}
 
 			destroy_values();
 
-			equalizer = std::move(other.equalizer);
-			hasher = std::move(other.hasher);
-			filled_buckets = other.filled_buckets;
-			states = std::move(other.states);
-			values = other.values;
+			equalizer = std::move(source.equalizer);
+			hasher = std::move(source.hasher);
+			filled_buckets = source.filled_buckets;
+			allocator = source.allocator;
+			states = std::move(source.states);
+			values = source.values;
 
-			other.values = nullptr;
-			other.filled_buckets = 0u;
+			source.values = nullptr;
+			source.filled_buckets = 0u;
+			source.allocator = nullptr;
 
 			return *this;
 		}
