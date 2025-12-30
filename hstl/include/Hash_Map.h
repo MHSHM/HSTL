@@ -15,6 +15,10 @@ namespace hstl
 		static constexpr size_t GROWTH_SIZE = 1024;
 		static constexpr size_t GROWTH_FACTOR = 2u;
 		static constexpr float LOAD_FACTOR = 0.7f;
+		// The MSB (Most Significant Bit) marks a slot as OCCUPIED.
+		// 0b1xxxxxxx = Occupied
+		// 0b0xxxxxxx = Empty
+		// The rest 7 bits will carry the hash fingerprint
 		static constexpr uint8_t BIT_OCCUPIED = 0b10000000;
 
 		struct Slot
@@ -22,6 +26,15 @@ namespace hstl
 			Key key;
 			Value value;
 		};
+
+		Eq equalizer;
+		Hash hasher;
+		size_t filled_buckets{0u};
+		Slot* slots{nullptr};
+		Allocator* allocator;
+		Array<uint8_t> states;
+
+	private:
 
 		static bool is_empty(uint8_t control_byte)
 		{
@@ -36,40 +49,10 @@ namespace hstl
 		static uint8_t make_control_byte(size_t hash)
 		{
 			static_assert(sizeof(size_t) == 8, "The logic is built upon the assumption that size_t is 8 bytes");
+
 			uint8_t fingerprint = static_cast<uint8_t>(hash >> 57);
+
 			return fingerprint | BIT_OCCUPIED;
-		}
-
-		Eq equalizer;
-		Hash hasher;
-		size_t filled_buckets{0u};
-		Slot* slots{nullptr};
-		Allocator* allocator;
-		Array<uint8_t> states;
-
-	private:
-		void destroy_slots()
-		{
-			if constexpr (std::is_trivially_destructible_v<Slot> == false)
-			{
-				if (filled_buckets > 0u)
-				{
-					size_t count = states.size();
-
-					for (size_t i = 0; i < count; ++i)
-					{
-						if (is_empty(states[i]))
-							continue;
-
-						std::destroy_at(&slots[i]);
-					}
-				}
-			}
-
-			if (slots)
-			{	
-				allocator->deallocate(slots, sizeof(Slot) * states.size(), alignof(Slot));
-			}
 		}
 
 		void grow_then_rehash()
@@ -100,6 +83,30 @@ namespace hstl
 
 			states = std::move(new_states_list);
 			slots = new_slots_list;
+		}
+
+		void destroy_slots()
+		{
+			if constexpr (std::is_trivially_destructible_v<Slot> == false)
+			{
+				if (filled_buckets > 0u)
+				{
+					size_t count = states.size();
+
+					for (size_t i = 0; i < count; ++i)
+					{
+						if (!is_empty(states[i]))
+						{
+							std::destroy_at(&slots[i]);
+						}
+					}
+				}
+			}
+
+			if (slots)
+			{
+				allocator->deallocate(slots, sizeof(Slot) * states.size(), alignof(Slot));
+			}
 		}
 
 	public:
@@ -223,14 +230,17 @@ namespace hstl
 		template<typename K, typename V>
 		Value& insert(K&& key, V&& value)
 		{
-			if (filled_buckets >= static_cast<size_t>(LOAD_FACTOR * states.size()))
+			auto size = states.size();
+
+			if (filled_buckets >= static_cast<size_t>(LOAD_FACTOR * size))
 			{
 				grow_then_rehash();
 			}
 
+			auto mask = size - 1u;
 			auto hash = hasher(key);
 			uint8_t control_byte = make_control_byte(hash);
-			size_t index = hash & (states.size() - 1u);
+			size_t index = hash & mask;
 
 			while (!is_empty(states[index]))
 			{
@@ -243,7 +253,7 @@ namespace hstl
 					}
 				}
 
-				index = (index + 1u) & (states.size() - 1u);
+				index = (index + 1u) & mask;
 			}
 
 			states[index] = control_byte;
@@ -261,9 +271,11 @@ namespace hstl
 				return nullptr;
 			}
 
+			auto size = states.size();
+			auto mask = size - 1u;
 			auto hash = hasher(key);
 			uint8_t control_byte = make_control_byte(hash);
-			size_t index = hash & (states.size() - 1u);
+			size_t index = hash & mask;
 
 			while (!is_empty(states[index]))
 			{
@@ -275,7 +287,7 @@ namespace hstl
 					}
 				}
 
-				index = (index + 1u) & (states.size() - 1u);
+				index = (index + 1u) & mask;
 			}
 
 			return nullptr;
