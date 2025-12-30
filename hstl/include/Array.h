@@ -166,21 +166,43 @@ namespace hstl
 				return *this;
 			}
 
-			if (_capacity < source.count)
+			if (allocator != source.allocator) // allocator mismatch case
 			{
-				grow_memory(source.count, true);
+				// Destroy the data using the current allocator
+				if (data)
+				{
+					std::destroy_n(data, count);
+					allocator->deallocate(data, sizeof(T) * _capacity, alignof(T));
+				}
+
+				// Allocate new data using the source allocator
+				T* new_data = nullptr;
+
+				if (source.count > 0u)
+				{
+					new_data = static_cast<T*>(source.allocator->allocate(sizeof(T) * source.count, alignof(T)));
+					uninitialized_copy_range(source.data, source.count, new_data);
+				}
+
+				data = new_data;
+				allocator = source.allocator;
+				_capacity = source.count;
 			}
 			else
 			{
-				std::destroy_n(data, count);
+				if (source.count > _capacity)
+				{
+					grow_memory(source.count, true);
+				}
+				else
+				{
+					std::destroy_n(data, count);
+				}
 
-				count = 0;
-			}
-
-			if (source.count > 0)
-			{
-				// FIXME: If this throws we will leak "data"
-				uninitialized_copy_range(source.data, source.count, data);
+				if (source.count > 0u)
+				{
+					uninitialized_copy_range(source.data, source.count, data);
+				}
 			}
 
 			count = source.count;
