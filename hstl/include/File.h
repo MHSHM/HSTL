@@ -18,7 +18,11 @@ namespace hstl
 		FILE* handle{nullptr};
 
 	private:
-		File() = default;
+		File(FILE* handle):
+			handle{handle}
+		{
+
+		}
 
 	public:
 		File(const File&) = delete;
@@ -54,6 +58,7 @@ namespace hstl
 			if (handle)
 			{
 				fclose(handle);
+				handle = nullptr;
 			}
 		}
 
@@ -70,27 +75,103 @@ namespace hstl
 			READ_WRITE_PRESERVE,
 			// Read & Write. Truncates (overwrites) file. Creates if missing.
 			READ_WRITE_OVERWRITE
-
 		};
 
 		// Opens the provided file with the provided mode
-		static Result<File> open(Str_View filepath, FILE_OPEN_MODE mode)
+		// file_path should be null-terminated
+		static Result<File> open(Str_View file_path, FILE_OPEN_MODE mode)
 		{
+			const char* mode_str = nullptr;
 
+			switch (mode)
+			{
+			case FILE_OPEN_MODE::READ:
+				mode_str = "rb";
+				break;
+			case FILE_OPEN_MODE::WRITE_OVERWRITE:
+				mode_str = "wb";
+				break;
+			case FILE_OPEN_MODE::WRITE_APPEND:
+				mode_str = "ab";
+				break;
+			case FILE_OPEN_MODE::READ_WRITE_PRESERVE:
+				mode_str = "rb+";
+				break;
+			case FILE_OPEN_MODE::READ_WRITE_OVERWRITE:
+				mode_str = "wb+";
+				break;
+			}
+
+			FILE* file_handle = fopen(file_path.data(), mode_str);
+
+			if (file_handle == nullptr)
+			{
+				return Err("Failed to open the following file '{}'", file_path);
+			}
+
+			File file{file_handle};
+
+			return file;
 		}
 
 		// Sequential I/O (Updates internal cursor) //
 
-		// Will read `size` bytes starting from the current cursor position
+		// Will read `size` bytes starting from the current cursor position and advance it by
+		// the read amount, if the read wasn't successful the cursor position is indeterminate
 		Result<size_t> read(void* buffer, size_t size)
 		{
+			if (handle == nullptr)
+			{
+				return Err("The file is invalid (closed or moved)");
+			}
 
+			// HSTL is not thread-safe so we better use the no-lock version to avoid
+			// the cost of locking and unlocking
+		#if defined(_MSC_VER)
+			size_t read_amount = _fread_nolock(buffer, 1, size, handle);
+		#elif defined(__GNUC__) || defined(__clang__)
+			size_t read_amount = fread_unlocked(buffer, 1, size, handle);
+		#else
+			size_t read_amount = fread(buffer, 1, size, handle);
+		#endif
+
+			if (ferror(handle) != 0)
+			{
+				// TODO: Provide a more insightful error message
+				return Err("Failed to read from the file");
+			}
+
+			// The read amount can be less than the required amount, in that case
+			// we've propably hit EOF
+			return read_amount;
 		}
 
-		// Will write `size` bytes starting from the current cursor position
+		// Will write `size` bytes starting from the current cursor position and advance it by
+		// the written amount, if the write wasn't successful the cursor position is indeterminate
 		Result<size_t> write(const void* buffer, size_t size)
 		{
+			if (handle == nullptr)
+			{
+				return Err("The file is invalid (closed or moved)");
+			}
 
+			// HSTL is not thread-safe so we better use the no-lock version to avoid
+			// the cost of locking and unlocking
+		#if defined(_MSC_VER)
+			size_t written_amount = _fwrite_nolock(buffer, 1, size, handle);
+		#elif defined(__GNUC__) || defined(__clang__)
+			size_t written_amount = fwrite_unlocked(buffer, 1, size, handle);
+		#else
+			size_t written_amount = fwrite(buffer, 1, size, handle);
+		#endif
+
+			if (ferror(handle) != 0)
+			{
+				// TODO: Provide a more insightful error message
+				return Err("Failed to write to the file");
+			}
+
+			return written_amount;
 		}
 
 		// Random Access I/O (Doesn't update internal cursor) //
