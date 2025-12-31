@@ -6,7 +6,8 @@ set(HSTL_PUBLIC_HEADERS
     include/Hash_Set.h
     include/Hash_Map.h
     include/Log.h
-    include/Memory.h)
+    include/Memory.h
+    include/File.h)
 
 set(HSTL_SOURCES)
 
