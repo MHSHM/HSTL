@@ -240,6 +240,42 @@ namespace hstl
 			return write_result;
 		}
 
+		// Cursor Management //
+
+		// Returns the current cursor position in bytes
+		Result<size_t> tell() const
+		{
+			if (handle == nullptr)
+			{
+				return Err("The file is invalid (closed or moved)");
+			}
+
+			int64_t pos = HSTL_FTELL(handle);
+			if (pos == -1)
+			{
+				return Err("Failed to get the cursor position");
+			}
+
+			return static_cast<size_t>(pos);
+		}
+
+		// Moves the cursor to the specified absolute offset
+		// Returns the new offset on success
+		Result<size_t> seek(size_t offset)
+		{
+			if (handle == nullptr)
+			{
+				return Err("The file is invalid (closed or moved)");
+			}
+
+			if (HSTL_FSEEK(handle, offset, SEEK_SET) != 0)
+			{
+				return Err("Failed to seek to the desired offset");
+			}
+
+			return offset;
+		}
+
 		// Utils //
 
 		// Returns the size of the file in bytes
@@ -265,6 +301,11 @@ namespace hstl
 			if (file_size == -1)
 			{
 				return Err("Failed to get the file size");
+			}
+
+			if (HSTL_FSEEK(handle, original_position, SEEK_SET) != 0)
+			{
+				return Err("Failed to restore cursor position");
 			}
 
 			return file_size;
