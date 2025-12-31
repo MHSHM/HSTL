@@ -12,6 +12,30 @@ namespace hstl
 	// I/O File handling
 	// Files are open in __binary mode__ no support for __ASCII mode__
 
+#if defined(_MSC_VER)
+	// Windows (MSVC): 64-bit support + No-Lock optimizations since HSTL is not thread-safe anyway
+	#define HSTL_FREAD(buf, sz, cnt, f)      _fread_nolock(buf, sz, cnt, f)
+	#define HSTL_FWRITE(buf, sz, cnt, f)     _fwrite_nolock(buf, sz, cnt, f)
+	#define HSTL_FSEEK(f, off, origin)       _fseeki64_nolock(f, static_cast<long long>(off), origin)
+	#define HSTL_FTELL(f)                    _ftelli64_nolock(f)
+	#define HSTL_FERROR(f)                   ferror(f)
+
+#elif defined(__GNUC__) || defined(__clang__)
+	#define HSTL_FREAD(buf, sz, cnt, f)      fread_unlocked(buf, sz, cnt, f)
+	#define HSTL_FWRITE(buf, sz, cnt, f)     fwrite_unlocked(buf, sz, cnt, f)
+	#define HSTL_FSEEK(f, off, origin)       fseeko(f, static_cast<off_t>(off), origin)
+	#define HSTL_FTELL(f)                    ftello(f)
+	#define HSTL_FERROR(f)                   ferror(f)
+
+#else
+	// Standard C Fallback (Safe but slower, 2GB limit on Windows)
+	#define HSTL_FREAD(buf, sz, cnt, f)      fread(buf, sz, cnt, f)
+	#define HSTL_FWRITE(buf, sz, cnt, f)     fwrite(buf, sz, cnt, f)
+	#define HSTL_FSEEK(f, off, origin)       fseek(f, static_cast<long>(off), origin)
+	#define HSTL_FTELL(f)                    ftell(f)
+	#define HSTL_FERROR(f)                   ferror(f)
+#endif
+
 	class File
 	{
 	private:
@@ -125,17 +149,9 @@ namespace hstl
 				return Err("The file is invalid (closed or moved)");
 			}
 
-			// HSTL is not thread-safe so we better use the no-lock version to avoid
-			// the cost of locking and unlocking
-		#if defined(_MSC_VER)
-			size_t read_amount = _fread_nolock(buffer, 1, size, handle);
-		#elif defined(__GNUC__) || defined(__clang__)
-			size_t read_amount = fread_unlocked(buffer, 1, size, handle);
-		#else
-			size_t read_amount = fread(buffer, 1, size, handle);
-		#endif
+			size_t read_amount = HSTL_FREAD(buffer, 1u, size, handle);
 
-			if (ferror(handle) != 0)
+			if (HSTL_FERROR(handle) != 0)
 			{
 				// TODO: Provide a more insightful error message
 				return Err("Failed to read from the file");
@@ -155,15 +171,7 @@ namespace hstl
 				return Err("The file is invalid (closed or moved)");
 			}
 
-			// HSTL is not thread-safe so we better use the no-lock version to avoid
-			// the cost of locking and unlocking
-		#if defined(_MSC_VER)
-			size_t written_amount = _fwrite_nolock(buffer, 1, size, handle);
-		#elif defined(__GNUC__) || defined(__clang__)
-			size_t written_amount = fwrite_unlocked(buffer, 1, size, handle);
-		#else
-			size_t written_amount = fwrite(buffer, 1, size, handle);
-		#endif
+			size_t written_amount = HSTL_FWRITE(buffer, 1u, size, handle);
 
 			if (ferror(handle) != 0)
 			{
@@ -179,39 +187,113 @@ namespace hstl
 		// Will read `size` bytes starting the offset
 		Result<size_t> read_at(void* buffer, size_t size, size_t offset)
 		{
+			if (handle == nullptr)
+			{
+				return Err("The file is invalid (closed or moved)");
+			}
 
+			int64_t original_position = HSTL_FTELL(handle);
+			if (original_position == -1)
+			{
+				return Err("Failed to get the cursor position");
+			}
+
+			if (HSTL_FSEEK(handle, offset, SEEK_SET) != 0)
+			{
+				return Err("Failed to seek to the desired offset");
+			}
+
+			auto read_result = read(buffer, size);
+			if (HSTL_FSEEK(handle, original_position, SEEK_SET) != 0)
+			{
+				return Err("Failed to restore cursor position");
+			}
+
+			return read_result;
 		}
 
 		// Will write `size` bytes starting from the offset
 		Result<size_t> write_at(const void* buffer, size_t size, size_t offset)
 		{
+			if (handle == nullptr)
+			{
+				return Err("The file is invalid (closed or moved)");
+			}
 
-		}
+			int64_t original_position = HSTL_FTELL(handle);
+			if (original_position == -1)
+			{
+				return Err("Failed to get the cursor position");
+			}
 
-		// Cursor Management //
+			if (HSTL_FSEEK(handle, offset, SEEK_SET) != 0)
+			{
+				return Err("Failed to seek to the desired offset");
+			}
 
-		Result<size_t> tell() const
-		{
+			auto write_result = write(buffer, size);
+			if (HSTL_FSEEK(handle, original_position, SEEK_SET) != 0)
+			{
+				return Err("Failed to restore cursor position");
+			}
 
-		}
-
-		Result<size_t> seek(size_t offset)
-		{
-
+			return write_result;
 		}
 
 		// Utils //
 
-		// Will read the entire content of the file
-		Result<Array<uint8_t>> read_all(Allocator* allocator = Default_Allocator::get())
-		{
-
-		}
-
 		// Returns the size of the file in bytes
 		Result<size_t> size() const
 		{
+			if (handle == nullptr)
+			{
+				return Err("The file is invalid (closed or moved)");
+			}
 
+			int64_t original_position = HSTL_FTELL(handle);
+			if (original_position == -1)
+			{
+				return Err("Failed to get the cursor position");
+			}
+
+			if (HSTL_FSEEK(handle, 0, SEEK_END) != 0)
+			{
+				return Err("Failed to seek to the end of file");
+			}
+
+			size_t file_size = HSTL_FTELL(handle);
+			if (file_size == -1)
+			{
+				return Err("Failed to get the file size");
+			}
+
+			return file_size;
+		}
+
+		// Will read the entire content of the file
+		Result<Array<uint8_t>> read_all(Allocator* allocator = Default_Allocator::get())
+		{
+			auto file_size_res = size();
+			if (!file_size_res)
+			{
+				return Err("Failed to get the file size");
+			}
+
+			Array<uint8_t> data{allocator};
+			data.resize(file_size_res.get_value());
+
+			auto read_result = read_at(data.buffer(), data.count(), 0u);
+			if (!read_result)
+			{
+				return Err("Failed to read the content of the file");
+			}
+
+			if (read_result.get_value() != file_size_res.get_value())
+			{
+				return Err("File read incomplete (Unexpected EOF)");
+			}
+
+			return data;
 		}
 	};
 };
