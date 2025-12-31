@@ -114,6 +114,10 @@ namespace hstl
 			{
 				std::destroy_at(&res);
 			}
+			else
+			{
+				std::destroy_at(&res);
+			}
 		}
 	};
 };
