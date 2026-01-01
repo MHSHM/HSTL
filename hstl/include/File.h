@@ -133,6 +133,12 @@ namespace hstl
 				return Err("Failed to open the following file '{}'", file_path);
 			}
 
+			// NOTE: It seems that the defaul internal buffer that cstdio uses is a bit too small?
+			// testing the API with writing 4KB chucks to a file had a terrible performance ~490ms compared
+			// to ~430ms for fstream which was weird, after setting the internal buffer's size to 64KB the time dropped
+			// to ~70ms which is mind blowing.
+			setvbuf(file_handle, nullptr, _IOFBF, 65536);
+
 			File file{file_handle};
 
 			return file;
@@ -317,7 +323,7 @@ namespace hstl
 			auto file_size_res = size();
 			if (!file_size_res)
 			{
-				return Err("Failed to get the file size");
+				return Err(file_size_res.get_err());
 			}
 
 			Array<uint8_t> data{allocator};
@@ -326,7 +332,7 @@ namespace hstl
 			auto read_result = read_at(data.buffer(), data.count(), 0u);
 			if (!read_result)
 			{
-				return Err("Failed to read the content of the file");
+				return Err(read_result.get_err());
 			}
 
 			if (read_result.get_value() != file_size_res.get_value())
