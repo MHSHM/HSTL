@@ -23,6 +23,12 @@ namespace hstl
 			Str::format(message, fmt, std::forward<Args>(args)...);
 		}
 
+		Err(const Err& source):
+			message{source.message}
+		{
+
+		}
+
 		Str_View get_message() const
 		{
 			return message.view();
@@ -101,11 +107,11 @@ namespace hstl
 			return res;
 		}
 
-		Str_View get_err() const
+		Err get_err() const
 		{
 			assert(has_err == true);
 
-			return err.get_message();
+			return err;
 		}
 
 		~Result()
