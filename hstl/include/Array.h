@@ -87,7 +87,7 @@ namespace hstl
 
 		void uninitialized_copy_range(T* src, size_t count, T* dst)
 		{
-			if constexpr (std::is_scalar_v<T> == true)
+			if constexpr (std::is_trivially_copyable_v<T> == true)
 			{
 				memcpy(dst, src, sizeof(T) * count);
 			}
@@ -99,7 +99,7 @@ namespace hstl
 
         void uninitialized_move_range(T* src, size_t count, T* dst)
         {
-            if constexpr (std::is_scalar_v<T> == true)
+            if constexpr (std::is_trivially_copyable_v<T> == true)
             {
                 memcpy(dst, src, sizeof(T) * count);
             }
@@ -111,7 +111,7 @@ namespace hstl
 
 		void uninitialized_value_construct_range(T* start, size_t count)
 		{
-			if constexpr (std::is_scalar_v<T> == true)
+			if constexpr (std::is_trivially_copyable_v<T> == true)
 			{
 				memset(start, 0, sizeof(T) * count);
 			}
@@ -342,7 +342,7 @@ namespace hstl
 
 		void remove(size_t index)
 		{
-		    if constexpr (std::is_scalar_v<T>)
+		    if constexpr (std::is_trivially_copyable_v<T>)
 		    {
 		    	memcpy(&data[index], &data[_count - 1], sizeof(T));
 		    }
@@ -363,7 +363,7 @@ namespace hstl
 
 		void remove_ordered(size_t index)
 		{
-            if constexpr (std::is_scalar_v<T>)
+            if constexpr (std::is_trivially_copyable_v<T>)
             {
                 memmove(&data[index], &data[index + 1], sizeof(T) * (_count - index - 1));
             }
@@ -402,7 +402,7 @@ namespace hstl
 
 				if(last_survivior != i)
 				{
-					if constexpr (std::is_scalar_v<T> == true)
+					if constexpr (std::is_trivially_copyable_v<T> == true)
 					{
 						memcpy(&data[i], &data[last_survivior], sizeof(T));
 					}
