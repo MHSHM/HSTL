@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Str.h"
+#include "Str_Format.h"
 
 #include <cstring>
 #include <assert.h>
@@ -48,10 +49,7 @@ namespace hstl
 	template<typename... Args>
 	void _log_impl(const char* prefix, const char* color, const char* fmt, const std::source_location& loc, Args&&... args)
 	{
-		// This will invoke a dynamic memory allocation
-		// TODO: Use Fixed_Str when implemented instead
-		Str buffer;
-		buffer.reserve(1024);
+		Fixed_Str<1024> buffer;
 
 		buffer.push(color);
 		buffer.push(prefix);
@@ -60,10 +58,10 @@ namespace hstl
 		buffer.push("[");
 		buffer.push(get_filename(loc.file_name()));
 		buffer.push(":");
-		Str::append(buffer, loc.line());
+		append(buffer, loc.line()); // found in Str_Format.h
 		buffer.push("] ");
 
-		Str::format(buffer, fmt, std::forward<Args>(args)...);
+		format(buffer, fmt, std::forward<Args>(args)...);
 
 		buffer.push("\n");
 
