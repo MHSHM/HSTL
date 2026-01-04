@@ -1,3 +1,4 @@
+# 1. Define the headers
 set(HSTL_PUBLIC_HEADERS
     include/Result.h
     include/Defer.h
@@ -11,17 +12,14 @@ set(HSTL_PUBLIC_HEADERS
     include/Fixed_Str.h
     include/Str_Format.h)
 
-set(HSTL_SOURCES)
-
-add_library(HSTL STATIC ${HSTL_SOURCES} ${HSTL_PUBLIC_HEADERS})
-
-set_target_properties(HSTL PROPERTIES LINKER_LANGUAGE CXX)
-
+add_library(HSTL INTERFACE)
 add_library(HSTL::HSTL ALIAS HSTL)
 
 target_include_directories(HSTL
-    PUBLIC
+    INTERFACE
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:include>)
 
-target_compile_features(HSTL PUBLIC cxx_std_20)
+target_compile_features(HSTL INTERFACE cxx_std_20)
+
+target_sources(HSTL INTERFACE ${HSTL_PUBLIC_HEADERS})
