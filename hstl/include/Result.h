@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Str.h"
+#include "Str_Format.h"
 
 #include <memory>
 #include <assert.h>
@@ -20,7 +21,7 @@ namespace hstl
 			// TODO: Use Fixed_Str when implemented instead
 			message.reserve(512);
 
-			Str::format(message, fmt, std::forward<Args>(args)...);
+			hstl::format(message, fmt, std::forward<Args>(args)...);
 		}
 
 		Err(const Err& source):
