@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Str.h"
+#include "Fixed_Str.h"
 #include "Str_Format.h"
 
 #include <memory>
@@ -11,16 +11,12 @@ namespace hstl
 	class Err
 	{
 	private:
-		Str message;
+		Fixed_Str<512> message;
 
 	public:
 		template<typename... Args>
 		Err(const char* fmt, Args&&... args)
 		{
-			// This will invoke a dynamic memory allocation
-			// TODO: Use Fixed_Str when implemented instead
-			message.reserve(512);
-
 			hstl::format(message, fmt, std::forward<Args>(args)...);
 		}
 
