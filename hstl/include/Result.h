@@ -113,9 +113,9 @@ namespace hstl
 
 		~Result()
 		{
-			if (has_err == false)
+			if (has_err == true)
 			{
-				std::destroy_at(&res);
+				std::destroy_at(&err);
 			}
 			else
 			{
