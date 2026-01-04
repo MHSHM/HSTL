@@ -115,7 +115,7 @@ namespace hstl
 		{
 			if (has_err == false)
 			{
-				std::destroy_at(&res);
+				std::destroy_at(&err);
 			}
 			else
 			{
