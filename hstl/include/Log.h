@@ -53,14 +53,9 @@ namespace hstl
 		Str buffer;
 		buffer.reserve(1024);
 
-		if (prefix)
-		{
-			assert(color);
-
-			buffer.push(color);
-			buffer.push(prefix);
-			buffer.push(COLOR_RESET);
-		}
+		buffer.push(color);
+		buffer.push(prefix);
+		buffer.push(COLOR_RESET);
 
 		buffer.push("[");
 		buffer.push(get_filename(loc.file_name()));
