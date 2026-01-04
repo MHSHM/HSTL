@@ -134,9 +134,9 @@ namespace hstl
 			}
 
 			// NOTE: It seems that the defaul internal buffer that cstdio uses is a bit too small?
-			// testing the API with writing 4KB chucks to a file had a terrible performance ~490ms compared
+			// testing the API with writing 128MB as 4KB chucks to a file had a terrible performance ~490ms compared
 			// to ~430ms for fstream which was weird, after setting the internal buffer's size to 64KB the time dropped
-			// to ~70ms which is mind blowing.
+			// to ~70ms.
 			setvbuf(file_handle, nullptr, _IOFBF, 65536);
 
 			File file{file_handle};
