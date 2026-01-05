@@ -72,7 +72,7 @@ namespace hstl
 	}
 
 	template<typename Buffer, typename... Args>
-	void format(Buffer& buffer, const char* fmt, Args&&... args)
+	void fmt(Buffer& buffer, const char* fmt, Args&&... args)
 	{
 		const char* read_ptr = fmt;
 
@@ -110,7 +110,7 @@ namespace hstl
 	}
 
 	template<typename... Args>
-	static Str formatted_str(Allocator* allocator, const char* fmt, Args&&... args)
+	static Str fmt_str(Allocator* allocator, const char* fmt, Args&&... args)
 	{
 		Str buffer(allocator);
 		buffer.reserve(1024);
@@ -121,7 +121,7 @@ namespace hstl
 	}
 
 	template<typename... Args>
-	static Str formatted_str(const char* fmt, Args&&... args)
+	static Str fmt_str(const char* fmt, Args&&... args)
 	{
 		Str buffer(Default_Allocator::get());
 		buffer.reserve(1024);
@@ -132,7 +132,7 @@ namespace hstl
 	}
 
 	template<size_t N, typename... Args>
-	static Fixed_Str<N> formatted_fixed_str(const char* fmt, Args&&... args)
+	static Fixed_Str<N> fmt_fixed_str(const char* fmt, Args&&... args)
 	{
 		Fixed_Str<N> buffer;
 

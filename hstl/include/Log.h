@@ -17,13 +17,13 @@ namespace hstl
 
 	struct Log_Format
 	{
-		const char* fmt;
+		const char* message;
 		std::source_location loc;
 
 		// Constructor allows implicit conversion from string literals (e.g. "Hello {}")
 		// and captures the caller's source location automatically.
-		Log_Format(const char* fmt, const std::source_location& loc = std::source_location::current())
-			:fmt{fmt}, loc{loc}
+		Log_Format(const char* message, const std::source_location& loc = std::source_location::current())
+			:message{message}, loc{loc}
 		{
 
 		}
@@ -47,7 +47,7 @@ namespace hstl
 	}
 
 	template<typename... Args>
-	void _log_impl(const char* prefix, const char* color, const char* fmt, const std::source_location& loc, Args&&... args)
+	void _log_impl(const char* prefix, const char* color, const char* message, const std::source_location& loc, Args&&... args)
 	{
 		Fixed_Str<1024> buffer;
 
@@ -61,7 +61,7 @@ namespace hstl
 		append(buffer, loc.line()); // found in Str_Format.h
 		buffer.push("] ");
 
-		format(buffer, fmt, std::forward<Args>(args)...);
+		fmt(buffer, message, std::forward<Args>(args)...);
 
 		buffer.push("\n");
 
@@ -71,18 +71,18 @@ namespace hstl
 	template<typename... Args>
 	void log_error(Log_Format log_format, Args&&... args)
 	{
-		_log_impl("[ERROR] ", COLOR_RED, log_format.fmt, log_format.loc, std::forward<Args>(args)...);
+		_log_impl("[ERROR] ", COLOR_RED, log_format.message, log_format.loc, std::forward<Args>(args)...);
 	}
 
 	template<typename... Args>
 	void log_info(Log_Format log_format, Args&&... args)
 	{
-		_log_impl("[INFO] ", COLOR_GREEN, log_format.fmt, log_format.loc, std::forward<Args>(args)...);
+		_log_impl("[INFO] ", COLOR_GREEN, log_format.message, log_format.loc, std::forward<Args>(args)...);
 	}
 
 	template<typename... Args>
 	void log_warn(Log_Format log_format, Args&&... args)
 	{
-		_log_impl("[WARN] ", COLOR_YELLOW, log_format.fmt, log_format.loc, std::forward<Args>(args)...);
+		_log_impl("[WARN] ", COLOR_YELLOW, log_format.message, log_format.loc, std::forward<Args>(args)...);
 	}
 };

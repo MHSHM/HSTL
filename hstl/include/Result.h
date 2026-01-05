@@ -17,7 +17,7 @@ namespace hstl
 		template<typename... Args>
 		Err(const char* fmt, Args&&... args)
 		{
-			hstl::format(message, fmt, std::forward<Args>(args)...);
+			hstl::fmt(message, fmt, std::forward<Args>(args)...);
 		}
 
 		Err(const Err& source):
