@@ -210,9 +210,9 @@ namespace hstl
 		}
 
 		// The splits are alive as long as the view is valid
-		Array<Str_View> split(char delimiter) const
+		Array<Str_View> split(char delimiter, Allocator* allocator = Default_Allocator::get()) const
 		{
-			Array<Str_View> splits;
+			Array<Str_View> splits(allocator);
 
 			const char* split_end = data();
 			const char* split_start = data();
