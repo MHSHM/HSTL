@@ -44,7 +44,9 @@ namespace hstl
 		template<typename Func, typename... Args>
 		static Result<Thread> _create_impl(Allocator* allocator, Func&& func, Args&&... args)
 		{
-			// NOTE: mark the lambda as mutable to be able to move func and args to std::invoke
+			// NOTE: Mark the lambda as mutable to be able to move func and args to std::invoke
+			// NOTE: Creating a storage package where the function and arguments are stored, std::forward will move
+			// what needs to be moved and copy what needs to be copied
 			auto task = [func = std::forward<Func>(func), ...args = std::forward<Args>(args)]() mutable {
 				std::invoke(std::move(func), std::move(args)...);
 			};
@@ -139,6 +141,30 @@ namespace hstl
 		static Result<Thread> create(Func&& func, Args&&... args)
 		{
 			return _create_impl(Default_Allocator::get(), std::forward<Func>(func), std::forward<Args>(args)...);
+		}
+
+		void join()
+		{
+			if (handle)
+			{
+				WaitForSingleObject(handle, INFINITY);
+				CloseHandle(handle);
+				handle = nullptr;
+			}
+		}
+
+		bool is_joinable() const
+		{
+			return handle != nullptr;
+		}
+
+		void detach()
+		{
+			if (handle)
+			{
+				CloseHandle(handle);
+				handle = nullptr;
+			}
 		}
 	};
 };
