@@ -101,6 +101,7 @@ namespace hstl
 		}
 	};
 
+	// TODO: This should not be an allocator, separate into its own type
 	class Pool_Allocator : public Allocator
 	{
 	private:

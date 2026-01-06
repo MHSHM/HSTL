@@ -29,7 +29,7 @@ namespace hstl
 		}
 	};
 
-	constexpr const char* get_filename(const char* path)
+	const char* get_filename(const char* path)
 	{
 		const char* file_name = path;
 
