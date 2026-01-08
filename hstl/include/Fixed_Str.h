@@ -10,7 +10,7 @@ namespace hstl
 	template<size_t capacity>
 	class Fixed_Str
 	{
-		static_assert(capacity > 0u);
+		static_assert(capacity > 0u, "You can't create a Fixed_Str with capacity 0");
 
 	private:
 		char data[capacity];

@@ -366,3 +366,5 @@ FodyWeavers.xsd
 *.json
 *.sublime-project
 *.sublime-workspace
+
+compile_commands.json

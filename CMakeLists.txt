@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.20)
 
 project(HSTL VERSION 0.1.0 DESCRIPTION "Home-grown STL-like containers & algorithms" LANGUAGES CXX)
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 option(HSTL_BUILD_TESTS "Build Catch2 unit tests" ON)
 
 set(BIN_DIR "${CMAKE_BINARY_DIR}/bin")
