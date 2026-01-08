@@ -82,6 +82,7 @@ namespace hstl
 		}
 
 	public:
+		static constexpr uint32_t nthread = static_cast<uint32_t>(-1);
 
 		Thread(const Thread&) = delete;
 		Thread& operator=(const Thread&) = delete;
@@ -143,6 +144,18 @@ namespace hstl
 			return _create_impl(Default_Allocator::get(), std::forward<Func>(func), std::forward<Args>(args)...);
 		}
 
+		static uint32_t get_this_thread_id()
+		{
+			return static_cast<uint32_t>(GetCurrentThreadId());
+		}
+
+		static uint32_t hardware_concurrency()
+		{
+			SYSTEM_INFO sys_info {};
+			GetSystemInfo(&sys_info);
+			return static_cast<uint32_t>(sys_info.dwNumberOfProcessors);
+		}
+
 		void join()
 		{
 			if (handle)
@@ -165,6 +178,16 @@ namespace hstl
 				CloseHandle(handle);
 				handle = nullptr;
 			}
+		}
+
+		uint32_t get_id() const
+		{
+			if (handle)
+			{
+				return id;
+			}
+
+			return nthread;
 		}
 	};
 };
