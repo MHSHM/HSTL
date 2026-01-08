@@ -73,7 +73,6 @@ namespace hstl
 			if (thread.handle == nullptr)
 			{
 				allocator->deallocate(thread_data, sizeof(Thread_Data_Type), alignof(Thread_Data_Type));
-
 				return Err("Failed to create the thread");
 			}
 
@@ -151,6 +150,7 @@ namespace hstl
 
 		static uint32_t hardware_concurrency()
 		{
+			// TODO: Explore GetNativeSystemInfo and the difference between it and GetSystemInfo
 			SYSTEM_INFO sys_info {};
 			GetSystemInfo(&sys_info);
 			return static_cast<uint32_t>(sys_info.dwNumberOfProcessors);
