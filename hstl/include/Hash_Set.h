@@ -34,11 +34,6 @@ namespace hstl
 			return (control_byte & BIT_OCCUPIED) == 0;
 		}
 
-		static bool is_match(uint8_t control_byte, uint8_t fingerprint)
-		{
-			return control_byte == (fingerprint | BIT_OCCUPIED);
-		}
-
 		static uint8_t make_control_byte(size_t hash)
 		{
 			static_assert(sizeof(size_t) == 8, "The logic is built upon the assumption that size_t is 8 bytes");
