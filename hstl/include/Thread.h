@@ -103,7 +103,7 @@ namespace hstl
 			if (handle)
 			{
 				// hmmmm
-				WaitForSingleObject(handle, INFINITY);
+				WaitForSingleObject(handle, INFINITE);
 
 				CloseHandle(handle);
 			}
@@ -120,7 +120,7 @@ namespace hstl
 		{
 			if (handle)
 			{
-				WaitForSingleObject(handle, INFINITY);
+				WaitForSingleObject(handle, INFINITE);
 
 				CloseHandle(handle);
 			}
@@ -160,7 +160,7 @@ namespace hstl
 		{
 			if (handle)
 			{
-				WaitForSingleObject(handle, INFINITY);
+				WaitForSingleObject(handle, INFINITE);
 				CloseHandle(handle);
 				handle = nullptr;
 			}
