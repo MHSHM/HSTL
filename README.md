@@ -2,7 +2,7 @@
 
 HSTL is a custom, high-performance, STL-like library built from scratch for systems programming and game development. It is designed with a focus on explicit memory management, cache locality, and exception-free error handling.
 
-The goal of this project is to provide the core foundation (containers, algorithms, memory, I/O, concurrency) needed to build a game (or any real-time application) completely from scratch.
+The goal of this project is to provide the core foundation (containers, algorithms, memory, I/O, concurrency) needed to build a game (or any real-time application).
 
 ## Key Features
 
