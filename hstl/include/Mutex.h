@@ -98,6 +98,16 @@ namespace hstl
 		Scoped_Lock(Scoped_Lock&&) = delete;
 		Scoped_Lock& operator=(Scoped_Lock&&) = delete;
 
+		Mutex& get_mutex() const
+		{
+			return mutex;
+		}
+
+		Mutex::LOCK_MODE get_lock_mode() const
+		{
+			return mode;
+		}
+
 		~Scoped_Lock()
 		{
 			mutex.unlock(mode);

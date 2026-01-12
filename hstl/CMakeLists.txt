@@ -12,7 +12,8 @@ set(HSTL_PUBLIC_HEADERS
     include/Fixed_Str.h
     include/Str_Format.h
     include/Thread.h
-    include/Mutex.h)
+    include/Mutex.h
+    include/Condition_Variable.h)
 
 add_library(HSTL INTERFACE)
 add_library(HSTL::HSTL ALIAS HSTL)
