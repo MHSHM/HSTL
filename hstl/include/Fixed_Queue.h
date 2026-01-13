@@ -21,10 +21,10 @@ namespace hstl
 
 	public:
 		Fixed_Queue() = default;
-	    Fixed_Queue(const Fixed_Queue&) = delete;
-	    Fixed_Queue& operator=(const Fixed_Queue&) = delete;
-	    Fixed_Queue(Fixed_Queue&&) = delete;
-	    Fixed_Queue& operator=(Fixed_Queue&&) = delete;
+		Fixed_Queue(const Fixed_Queue&) = delete;
+		Fixed_Queue& operator=(const Fixed_Queue&) = delete;
+		Fixed_Queue(Fixed_Queue&&) = delete;
+		Fixed_Queue& operator=(Fixed_Queue&&) = delete;
 		~Fixed_Queue() = default;
 
 	public:

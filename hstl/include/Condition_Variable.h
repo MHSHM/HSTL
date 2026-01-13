@@ -3,8 +3,6 @@
 #include "Mutex.h"
 
 #include <Windows.h>
-#include <cmath>
-#include <minwindef.h>
 
 namespace hstl
 {

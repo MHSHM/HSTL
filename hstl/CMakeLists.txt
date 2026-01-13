@@ -19,6 +19,8 @@ set(HSTL_PUBLIC_HEADERS
 add_library(HSTL INTERFACE)
 add_library(HSTL::HSTL ALIAS HSTL)
 
+target_compile_definitions(HSTL INTERFACE NOMINMAX)
+
 target_include_directories(HSTL
     INTERFACE
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
