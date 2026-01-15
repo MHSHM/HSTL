@@ -124,25 +124,6 @@ namespace hstl
 
 	public:
 		template<typename T>
-		Generic(const T& value, Allocator* allocator = Default_Allocator::get()):
-			allocator{allocator}
-		{
-			using decay_T = std::decay_t<T>;
-
-			if constexpr (sizeof(decay_T) <= MAX_STACK_ALLOCATED_BUFFER_SIZE)
-			{
-				new (reinterpret_cast<decay_T*>(storage.stack_allocated_buffer)) decay_T(value);
-			}
-			else
-			{
-				storage.dynamically_allocated_data = static_cast<decay_T*>(allocator->allocate(sizeof(decay_T), alignof(decay_T)));
-				new (storage.dynamically_allocated_data) decay_T(value);
-			}
-
-			manager_fn = &manage<decay_T>;
-		}
-
-		template<typename T>
 		requires (!std::is_same_v<std::decay_t<T>, Generic>)
 		Generic(T&& value, Allocator* allocator = Default_Allocator::get()):
 			allocator{allocator}
