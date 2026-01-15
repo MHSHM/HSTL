@@ -3,6 +3,8 @@
 #include "Mutex.h"
 #include "Condition_Variable.h"
 
+#include <utility>
+
 namespace hstl
 {
 	template<typename T, size_t capacity>
@@ -15,6 +17,8 @@ namespace hstl
 		size_t write_index{0};
 		size_t read_index{0};
 		mutable Mutex mutex;
+		// NOTE: Since the queue is fixed in size producers can also sleep not just consumers
+		// that's why we use two condition variables, one for the consumers and the other for producers
 		Condition_Variable producers_cv;
 		Condition_Variable consumers_cv;
 		T data[capacity]; // FIXME?: Forces T to be default-constructible
