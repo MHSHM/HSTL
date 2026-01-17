@@ -264,6 +264,8 @@ namespace hstl
 			auto mask = size - 1u;
 			auto hash = hasher(key);
 			uint8_t control_byte = make_control_byte(hash);
+			// This will cancel all bits that are multiple of our capacity leaving us with
+			// bits that aren't i.e the reminder
 			size_t index = hash & mask;
 
 			while (!is_empty(states[index]))
@@ -294,6 +296,27 @@ namespace hstl
 
 		bool remove(const T& key)
 		{
+			// Indices ->  [0  1  2  3  4  5  6  7  8  ...]
+			// Values  ->  [_, _, _, A, B, C, D, E, F, ...]
+			// Home    ->  [_, _, _, 3, 3, 3, 3, 5, 5, ...]
+
+			// remove(C)
+
+			// Indices: [ 3, 4, 5, 6, 7, 8 ]
+			// Values:  [ A, B, _, D, E, F ]  <-- C is gone, Hole at 5
+
+			// Indices: [ 3, 4, 5, 6, 7, 8 ]
+			// Values:  [ A, B, D, _, E, F ]  <-- D moved to 5, Hole moved to 6
+
+			// Indices: [ 3, 4, 5, 6, 7, 8 ]
+			// Values:  [ A, B, D, E, _, F ]  <-- E moved to 6, Hole moved to 7
+
+			// Indices: [ 3, 4, 5, 6, 7, 8 ]
+			// Values:  [ A, B, D, E, F, _ ]  <-- F moved to 7, Hole moved to 8
+
+			// Indices: [ ... 3, 4, 5, 6, 7, 8 ... ]
+			// Values:  [ ... A, B, D, E, F, _ ... ]
+
 			if (filled_buckets == 0)
 			{
 				return false;
@@ -331,6 +354,7 @@ namespace hstl
 			while(!is_empty(states[current_index]))
 			{
 				auto home_hash = hasher(values[current_index] /*key*/);
+				// This where the probing cluster starts
 				auto home_index = home_hash & mask;
 				auto dist_home_to_hole = dist(home_index, hole_index);
 				auto dist_home_to_current = dist(home_index, current_index);
