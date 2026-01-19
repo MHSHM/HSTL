@@ -12,7 +12,7 @@ namespace hstl
 	class Generic
 	{
 	private:
-		static constexpr size_t MAX_STACK_ALLOCATED_BUFFER_SIZE = 64u;
+		static constexpr size_t MAX_STACK_ALLOCATED_BUFFER_SIZE = 48;
 
 		union
 		{

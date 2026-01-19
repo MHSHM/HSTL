@@ -3,6 +3,7 @@
 #include <new>
 #include <cstddef>
 #include <assert.h>
+#include <algorithm>
 
 namespace hstl
 {
@@ -22,13 +23,13 @@ namespace hstl
 		[[nodiscard]]
 		void* allocate(size_t size, size_t alignment = alignof(std::max_align_t)) override
 		{
-			return ::operator new(size, std::align_val_t(alignment));
+			return malloc(size);
 		}
 
 		void deallocate(void* ptr, size_t size, size_t alignment = alignof(std::max_align_t)) override
 		{
 			assert(ptr); // hmmm, maybe we should make it no-op?
-			::operator delete(ptr, size, std::align_val_t(alignment));
+			free(ptr);
 		}
 
 		static Default_Allocator* get()
