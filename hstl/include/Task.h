@@ -36,6 +36,7 @@ namespace hstl
 		using Manage_FN  = void(*)(Task* task, Task* dst, LAMBDA_OP op);
 		Manage_FN manage_fn{nullptr};
 
+		// TODO: Guard against false sharing?
 		std::atomic<bool> completed{false};
 
 		template<typename Package_Type>
@@ -134,6 +135,7 @@ namespace hstl
 
 		void invoke()
 		{
+			// TODO: Guard against multiple invocations
 			manage_fn(this, nullptr, LAMBDA_OP::INVOKE);
 		}
 
