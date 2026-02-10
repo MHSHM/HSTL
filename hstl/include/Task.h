@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <atomic>
+#include <utility>
 
 namespace hstl
 {
@@ -85,7 +86,7 @@ namespace hstl
 				return std::invoke(std::move(func), std::move(args)...);
 			};
 
-			using Package_Type = std::decltype(package);
+			using Package_Type = decltype(package);
 			static_assert(sizeof(Package_Type) < LAMBDA_STORAGE_SIZE, "The provided task is too big");
 
 			Package_Type* package_loc = reinterpret_cast<Package_Type*>(lambda_storage);
