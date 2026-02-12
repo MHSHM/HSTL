@@ -13,7 +13,7 @@ namespace hstl
 		Function function{nullptr};
 		void* data{nullptr};
 		std::atomic<int>* parent_counter{nullptr};
-	};
+	}
 
 	class Work_Stealing_Queue
 	{
@@ -70,15 +70,20 @@ namespace hstl
 
 		bool pop(Job& out_job)
 		{
+			// NOTE: Assuming the queue is not empty
 			size_t b = bottom.load(std::memory_order_relaxed) - 1u;
+
+			// NOTE: Relaxed store as bottom is only written by the owner thread
 			bottom.store(b, std::memory_order_relaxed);
 
+			// NOTE: Prevent Load-Store reordering
 			std::atomic_thread_fence(std::memory_order_seq_cst);
 
 			size_t t = top.load(std::memory_order_relaxed);
 
-			size_t size = b - t;
+			ptrdiff_t size = static_cast<ptrdiff_t>(b) - static_cast<ptrdiff_t>(t);
 
+			// NOTE: The queue was empty, rollback
 			if (size < 0u)
 			{
 				bottom.store(t, std::memory_order_relaxed);
@@ -87,13 +92,14 @@ namespace hstl
 
 			Job job = jobs[b & (capacity - 1u)];
 
+			// NOTE: The easy case, the queue has data and both the owner and the thief access different ends
 			if (size > 0u)
 			{
 				memcpy(&out_job, &job, sizeof(Job));
 				return true;
 			}
 
-			// Here you (the owner) are fighting with the thieves over the only entry in the queue
+			// NOTE: Here you (the owner) are fighting with the thieves over the only entry in the queue
 			if (!top.compare_exchange_strong(t, t + 1, std::memory_order_seq_cst, std::memory_order_relaxed))
 			{
 				bottom.store(t + 1, std::memory_order_relaxed);
@@ -103,6 +109,34 @@ namespace hstl
 			memcpy(&out_job, &job, sizeof(Job));
 			bottom.store(t + 1, std::memory_order_relaxed);
 			return true;
+		}
+
+		bool steal(Job& out_job)
+		{
+		    size_t t = top.load(std::memory_order_acquire);
+
+		    std::atomic_thread_fence(std::memory_order_seq_cst); // Synchronize with pop's fence
+		    size_t b = bottom.load(std::memory_order_acquire);
+
+		    ptrdiff_t size = static_cast<ptrdiff_t>(b) - static_cast<ptrdiff_t>(t);
+
+		    if (size <= 0)
+		    {
+		        return false;
+		    }
+
+		    Job job = jobs[t & (capacity - 1u)];
+
+		    if (!top.compare_exchange_strong(t, t + 1,
+		                                     std::memory_order_seq_cst,
+		                                     std::memory_order_relaxed))
+		    {
+		        return false;
+		    }
+
+		    // 6. Success
+		    out_job = job;
+		    return true;
 		}
 	};
 };
