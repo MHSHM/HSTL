@@ -114,6 +114,35 @@ namespace hstl
 			return true;
 		}
 
-		// TODO: Implement steal function
+		bool steal(Job& out_job)
+		{
+		    // Acquire matches the Release in 'pop'.
+		    size_t t = top.load(std::memory_order_acquire);
+
+		    // hmmmmmmm?
+		    std::atomic_thread_fence(std::memory_order_seq_cst);
+
+		    // Matches 'push' bottom.store(release).
+		    size_t b = bottom.load(std::memory_order_acquire);
+
+		    if (static_cast<ptrdiff_t>(b - t) <= 0)
+		    {
+		        return false; // Queue is empty
+		    }
+
+		    // We can safely read this because we established the happens-before
+		    // relationship with bottom.load(acquire).
+		    Job job = jobs[t & (CAPACITY - 1)];
+
+		    if (!top.compare_exchange_strong(t, t + 1,
+		                                     std::memory_order_acq_rel,
+		                                     std::memory_order_relaxed))
+		    {
+		        return false;
+		    }
+
+		    out_job = job;
+		    return true;
+		}
 	};
 };
