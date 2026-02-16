@@ -257,5 +257,43 @@ namespace hstl
 				}
 			}
 		}
+
+		bool get_job(Job& job)
+		{
+			uint32_t index = (t_thread_index == -1) ? 0u : t_thread_index;
+
+			if (queues[index]->pop(job))
+			{
+				return true;
+			}
+
+			for (uint32_t i = 0; i < threads_count; ++i)
+			{
+				uint32_t victim_index = (index + i + 1) % threads_count;
+
+				if (victim_index == index)
+					continue;
+
+				if (queues[victim_index]->steal(job))
+				{
+					return true;
+				}
+			}
+
+			return false;
+		}
+
+		void execute_job(const Job& job)
+		{
+			if (job.function)
+			{
+				job.function(job.data);
+			}
+
+			if (job.parent_counter)
+			{
+				job.parent_counter->fetch_sub(1u, std::memory_order_release);
+			}
+		}
 	};
 };
