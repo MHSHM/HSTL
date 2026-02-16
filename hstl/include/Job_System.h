@@ -1,12 +1,18 @@
 #pragma once
 
+#include "Array.h"
+#include "Thread.h"
+
 #include <atomic>
 #include <Memory.h>
 #include <Log.h>
 #include <cstring>
+#include <malloc.h>
 
 namespace hstl
 {
+	static thread_local uint32_t t_thread_index = static_cast<uint32_t>(-1);
+
 	struct Job
 	{
 		using Function = void(*)(void* data);
@@ -143,6 +149,113 @@ namespace hstl
 
 		    out_job = job;
 		    return true;
+		}
+	};
+
+	class Job_System
+	{
+	private:
+		Array<Thread> workers;
+		Array<Work_Stealing_Queue*> queues;
+		Allocator* allocator{nullptr};
+		std::atomic<bool> is_running;
+		uint32_t threads_count{0u};
+
+	public:
+		Job_System(Allocator* allocator = Default_Allocator::get()):
+			workers{allocator},
+			queues(allocator),
+			allocator{allocator}
+		{
+			threads_count = Thread::hardware_concurrency() - 1u;
+			queues.resize(threads_count);
+			workers.reserve(threads_count);
+
+			is_running.store(true, std::memory_order_release);
+
+			for (uint32_t i = 0; i < threads_count; ++i)
+			{
+				queues[i] = (Work_Stealing_Queue*)allocator->allocate(sizeof(Work_Stealing_Queue), alignof(Work_Stealing_Queue));
+				new (&queues[i]) Work_Stealing_Queue(allocator);
+
+				auto thread_res = Thread::create(allocator, [this](uint32_t index){
+					this->worker_loop(index);
+				}, i);
+
+				if (thread_res)
+				{
+					workers.push(std::move(thread_res.get_value()));
+				}
+			}
+		}
+
+		~Job_System()
+		{
+			is_running.store(false, std::memory_order_release);
+
+			for (size_t i = 0; i < workers.count(); ++i)
+			{
+		        if (workers[i].is_joinable())
+		        {
+		            workers[i].join();
+		        }
+		    }
+
+		    for (size_t i = 0; i < queues.count(); ++i)
+		    {
+		        queues[i]->~Work_Stealing_Queue();
+		        allocator->deallocate(queues[i], sizeof(Work_Stealing_Queue), alignof(Work_Stealing_Queue));
+		    }
+		}
+
+		void kick_job(Job job)
+		{
+			if (job.parent_counter)
+			{
+				// Push will make sure to publish this write to other threads
+				job.parent_counter->fetch_add(1u, std::memory_order_relaxed);
+			}
+
+			uint32_t queue_index = (t_thread_index == -1 ? 0u : t_thread_index);
+
+			queues[queue_index]->push(job);
+		}
+
+		void wait(const std::atomic<int>& counter)
+		{
+			while (counter.load(std::memory_order_acquire) > 0)
+			{
+				Job job;
+
+				if (get_job(job))
+				{
+					execute_job(job);
+				}
+				else
+				{
+					// yield
+				}
+			}
+		}
+
+	private:
+		void worker_loop(uint32_t index)
+		{
+			t_thread_index = index;
+
+			while (is_running.load(std::memory_order_relaxed))
+			{
+				Job job {};
+
+				if (get_job(job))
+				{
+					execute_job(job);
+				}
+				else
+				{
+					// yield
+				}
+			}
 		}
 	};
 };

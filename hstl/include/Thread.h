@@ -31,6 +31,8 @@ namespace hstl
 		}
 	};
 
+	// TODO: Add Small Buffer Optimization
+
 	class Thread
 	{
 	private:
