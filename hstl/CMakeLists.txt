@@ -21,7 +21,7 @@ set(HSTL_PUBLIC_HEADERS
 add_library(HSTL INTERFACE)
 add_library(HSTL::HSTL ALIAS HSTL)
 
-target_compile_definitions(HSTL INTERFACE NOMINMAX)
+target_compile_definitions(HSTL INTERFACE NOMINMAX _WIN32_WINNT=0x0A00)
 
 target_include_directories(HSTL
     INTERFACE

@@ -6,12 +6,13 @@
 #include <atomic>
 #include <Memory.h>
 #include <Log.h>
+#include <cassert>
 #include <cstring>
 #include <malloc.h>
 
 namespace hstl
 {
-	static thread_local uint32_t t_thread_index = static_cast<uint32_t>(-1);
+	inline thread_local uint32_t t_thread_index = static_cast<uint32_t>(-1);
 
 	struct Job
 	{
@@ -107,7 +108,7 @@ namespace hstl
 				return true;
 			}
 
-			// NOTE: Here you (the owner) are fighting with the thieves over the only entry in the queue
+			// NOTE: Here you (the owner) is fighting with the thieves over the only entry in the queue
 			// If we made it first we lock the thief out by incrementing the top
 			if (!top.compare_exchange_strong(t, t + 1, std::memory_order_acq_rel, std::memory_order_relaxed))
 			{
@@ -159,7 +160,7 @@ namespace hstl
 		Array<Work_Stealing_Queue*> queues;
 		Allocator* allocator{nullptr};
 		std::atomic<bool> is_running;
-		uint32_t threads_count{0u};
+		uint32_t workers_count{0u};
 
 	public:
 		Job_System(Allocator* allocator = Default_Allocator::get()):
@@ -167,31 +168,36 @@ namespace hstl
 			queues(allocator),
 			allocator{allocator}
 		{
-			threads_count = Thread::hardware_concurrency() - 1u;
-			queues.resize(threads_count);
-			workers.reserve(threads_count);
+			workers_count = Thread::hardware_concurrency() - 1u;
+			queues.resize(workers_count + 1u);
+			workers.reserve(workers_count);
 
 			is_running.store(true, std::memory_order_release);
 
-			for (uint32_t i = 0; i < threads_count; ++i)
+			for (uint32_t i = 0; i < workers_count + 1u; ++i)
 			{
 				queues[i] = (Work_Stealing_Queue*)allocator->allocate(sizeof(Work_Stealing_Queue), alignof(Work_Stealing_Queue));
 				new (&queues[i]) Work_Stealing_Queue(allocator);
+			}
 
+			for(uint32_t i = 0u; i < workers_count; ++i)
+			{
 				auto thread_res = Thread::create(allocator, [this](uint32_t index){
 					this->worker_loop(index);
 				}, i);
 
 				if (thread_res)
 				{
-					workers.push(std::move(thread_res.get_value()));
+				    workers.push(std::move(thread_res.get_value()));
 				}
 			}
+
+			t_thread_index = workers_count;
 		}
 
 		~Job_System()
 		{
-			is_running.store(false, std::memory_order_release);
+			is_running.store(false, std::memory_order_relaxed);
 
 			for (size_t i = 0; i < workers.count(); ++i)
 			{
@@ -210,31 +216,45 @@ namespace hstl
 
 		void kick_job(Job job)
 		{
+			assert(t_thread_index != static_cast<uint32_t>(-1) && "Unregistered thread tried to kick a job!");
+
 			if (job.parent_counter)
 			{
 				// Push will make sure to publish this write to other threads
 				job.parent_counter->fetch_add(1u, std::memory_order_relaxed);
 			}
 
-			uint32_t queue_index = (t_thread_index == -1 ? 0u : t_thread_index);
-
-			queues[queue_index]->push(job);
+			queues[t_thread_index]->push(job);
 		}
 
 		void wait(const std::atomic<int>& counter)
 		{
+			size_t yield_counter = 0u;
+
 			while (counter.load(std::memory_order_acquire) > 0)
 			{
-				Job job;
+				Job job {};
 
 				if (get_job(job))
 				{
 					execute_job(job);
+					yield_counter = 0u;
+				}
+				else if (yield_counter < 10)
+				{
+					// NOTE: Careful, this is compiler specific
+					_mm_pause();
+				}
+				else if (yield_counter < 100)
+				{
+					Thread::yield();
 				}
 				else
 				{
-					// yield
+					Thread::sleep(1u);
 				}
+
+				++yield_counter;
 			}
 		}
 
@@ -243,6 +263,8 @@ namespace hstl
 		{
 			t_thread_index = index;
 
+			size_t yield_counter = 0u;
+
 			while (is_running.load(std::memory_order_relaxed))
 			{
 				Job job {};
@@ -250,28 +272,41 @@ namespace hstl
 				if (get_job(job))
 				{
 					execute_job(job);
+					yield_counter = 0u;
+				}
+				else if (yield_counter < 10)
+				{
+					// NOTE: Careful, this is compiler specific
+					_mm_pause();
+				}
+				else if (yield_counter < 100)
+				{
+					Thread::yield();
 				}
 				else
 				{
-					// yield
+					Thread::sleep(1u);
 				}
+
+				++yield_counter;
 			}
 		}
 
 		bool get_job(Job& job)
 		{
-			uint32_t index = (t_thread_index == -1) ? 0u : t_thread_index;
+			assert(t_thread_index != static_cast<uint32_t>(-1) && "Unregistered thread tried to get a job!");
 
-			if (queues[index]->pop(job))
+			if (queues[t_thread_index]->pop(job))
 			{
 				return true;
 			}
 
-			for (uint32_t i = 0; i < threads_count; ++i)
-			{
-				uint32_t victim_index = (index + i + 1) % threads_count;
+			size_t total_threads = workers_count + 1u;
 
-				if (victim_index == index)
+			for (uint32_t i = 0; i < total_threads; ++i)
+			{
+				uint32_t victim_index = (t_thread_index + i + 1) % total_threads;
+				if (victim_index == t_thread_index)
 					continue;
 
 				if (queues[victim_index]->steal(job))

@@ -158,6 +158,16 @@ namespace hstl
 			return static_cast<uint32_t>(sys_info.dwNumberOfProcessors);
 		}
 
+		static void yield()
+		{
+			SwitchToThread();
+		}
+
+		static void sleep(uint32_t milliseconds)
+		{
+			Sleep(static_cast<DWORD>(milliseconds));
+		}
+
 		void join()
 		{
 			if (handle)
