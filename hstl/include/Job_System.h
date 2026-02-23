@@ -177,7 +177,7 @@ namespace hstl
 			for (uint32_t i = 0; i < workers_count + 1u; ++i)
 			{
 				queues[i] = (Work_Stealing_Queue*)allocator->allocate(sizeof(Work_Stealing_Queue), alignof(Work_Stealing_Queue));
-				new (&queues[i]) Work_Stealing_Queue(allocator);
+				new (queues[i]) Work_Stealing_Queue(allocator);
 			}
 
 			for(uint32_t i = 0u; i < workers_count; ++i)
