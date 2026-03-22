@@ -110,33 +110,33 @@ namespace hstl
 	}
 
 	template<typename... Args>
-	static Str fmt_str(Allocator* allocator, const char* fmt, Args&&... args)
+	static Str fmt_str(Allocator* allocator, const char* str, Args&&... args)
 	{
 		Str buffer(allocator);
 		buffer.reserve(1024);
 
-		format(buffer, fmt, std::forward<Args>(args)...);
+		fmt(buffer, str, std::forward<Args>(args)...);
 
 		return buffer;
 	}
 
 	template<typename... Args>
-	static Str fmt_str(const char* fmt, Args&&... args)
+	static Str fmt_str(const char* str, Args&&... args)
 	{
 		Str buffer(Default_Allocator::get());
 		buffer.reserve(1024);
 
-		format(buffer, fmt, std::forward<Args>(args)...);
+		fmt(buffer, str, std::forward<Args>(args)...);
 
 		return buffer;
 	}
 
 	template<size_t N, typename... Args>
-	static Fixed_Str<N> fmt_fixed_str(const char* fmt, Args&&... args)
+	static Fixed_Str<N> fmt_fixed_str(const char* str, Args&&... args)
 	{
 		Fixed_Str<N> buffer;
 
-		format(buffer, fmt, std::forward<Args>(args)...);
+		fmt(buffer, str, std::forward<Args>(args)...);
 
 		return buffer;
 	}
