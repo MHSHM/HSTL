@@ -4,6 +4,7 @@
 #include <memory>
 #include <algorithm>
 #include <assert.h>
+#include <cstring>
 
 #include "Memory.h"
 

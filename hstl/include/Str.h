@@ -5,6 +5,7 @@
 
 #include <assert.h>
 #include <stdio.h>
+#include <cstring>
 
 namespace hstl
 {
