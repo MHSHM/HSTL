@@ -4,7 +4,8 @@ project(HSTL VERSION 0.1.0 DESCRIPTION "Home-grown STL-like containers & algorit
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-option(HSTL_BUILD_TESTS "Build Catch2 unit tests" ON)
+option(HSTL_BUILD_TESTS "Build HSLT's unit tests" ON)
+option(HSTL_BUILD_PLAYGROUND "Build the playground executable" ON)
 
 set(BIN_DIR "${CMAKE_BINARY_DIR}/bin")
 
@@ -31,7 +32,11 @@ if (HSTL_BUILD_TESTS)
 endif()
 
 add_subdirectory(hstl)
-add_subdirectory(playground)
+
+if (HSTL_BUILD_PLAYGROUND)
+    add_subdirectory(playground)
+endif()
+
 
 if (HSTL_BUILD_TESTS)
     add_subdirectory(tests)
