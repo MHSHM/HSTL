@@ -16,7 +16,8 @@ set(HSTL_PUBLIC_HEADERS
     include/Condition_Variable.h
     include/Fixed_Queue.h
     include/Task.h
-    include/Job_System.h)
+    include/Job_System.h
+    include/HTTP_Server.h)
 
 add_library(HSTL INTERFACE)
 add_library(HSTL::HSTL ALIAS HSTL)
