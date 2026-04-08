@@ -19,6 +19,13 @@ namespace hstl
 	public:
 		static constexpr size_t npos = static_cast<size_t>(-1);
 
+		Str_View():
+			_data{nullptr},
+			_count{0u}
+		{
+		
+		}
+
 		Str_View(const char* _data, size_t _count):
 			_data{_data},
 			_count{_count}
@@ -48,6 +55,7 @@ namespace hstl
 
 		const char& operator[](size_t index) const
 		{
+			assert(_data);
 			return _data[index];
 		}
 
@@ -62,7 +70,7 @@ namespace hstl
 
 		bool operator==(const Str_View& view) const
 		{
-			if (view.count() != _count)
+			if (view.count() != _count || view.data() == nullptr || _data == nullptr)
 			{
 				return false;
 			}
@@ -80,6 +88,11 @@ namespace hstl
 		// Will return the first occurence of the provided character
 		size_t find(char ch) const
 		{
+			if (_data == nullptr)
+			{
+				return npos;
+			}
+
 			const void* location = memchr(_data, static_cast<unsigned char>(ch), _count);
 
 			if (location == nullptr)
@@ -95,6 +108,11 @@ namespace hstl
 		// where N is the size of the string and M is the size of the view
 		size_t find(const char* substr) const
 		{
+			if (_data == nullptr)
+			{
+				return npos;
+			}
+
 			if (substr == nullptr)
 			{
 				return npos;
@@ -131,6 +149,11 @@ namespace hstl
 
 		Str_View substr(size_t pos, size_t length) const
 		{
+			if (_data == nullptr)
+			{
+				return Str_View{nullptr, 0};
+			}
+
 			assert(pos <= _count);
 
 			size_t remaining = _count - pos;
@@ -143,6 +166,11 @@ namespace hstl
 		// Expects a null-terminated string
 		bool starts_with(const char* prefix) const
 		{
+			if (_data == nullptr)
+			{
+				return false;
+			}
+
 			if (prefix == nullptr)
 			{
 				return false;
@@ -160,6 +188,11 @@ namespace hstl
 
 		bool starts_with(const Str_View& prefix) const
 		{
+			if (_data == nullptr)
+			{
+				return false;
+			}
+
 			if (prefix.data() == nullptr)
 			{
 				return false;
@@ -178,6 +211,11 @@ namespace hstl
 		// Expects a null-terminated string
 		bool ends_with(const char* suffix) const
 		{
+			if (_data == nullptr)
+			{
+				return false;
+			}
+
 			if (suffix == nullptr)
 			{
 				return false;
@@ -195,6 +233,11 @@ namespace hstl
 
 		bool ends_with(const Str_View& suffix) const
 		{
+			if (_data == nullptr)
+			{
+				return false;
+			}
+
 			if (suffix.data() == nullptr)
 			{
 				return false;
@@ -213,6 +256,8 @@ namespace hstl
 		// The splits are alive as long as the view is valid
 		Array<Str_View> split(char delimiter, Allocator* allocator = Default_Allocator::get()) const
 		{
+			assert(_data);
+
 			Array<Str_View> splits(allocator);
 
 			const char* split_end = data();
