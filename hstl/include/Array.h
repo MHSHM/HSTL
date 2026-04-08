@@ -427,6 +427,39 @@ namespace hstl
 			_count = last_survivior + 1;
 		}
 
+		bool reassign_allocator(Allocator* new_allocator)
+		{
+			if (new_allocator == allocator)
+			{
+				return true;
+			}
+
+			// Allocate new memory with the new allocator
+			T* new_data = static_cast<T*>(new_allocator->allocate(sizeof(T) * _capacity, alignof(T)));
+
+			// Move the data to the new memory if any
+			if (data && _count > 0u)
+			{
+				uninitialized_move_range(data, _count, new_data);
+
+				if constexpr (std::is_trivially_destructible_v<T> == false)
+				{
+					std::destroy_n(data, _count);
+				}
+			}
+
+			// Free the old memory with the old allocator
+			if (data && _capacity > 0u)
+			{
+				allocator->deallocate(data, sizeof(T) * _capacity, alignof(T));
+			}
+
+			// Update the allocator pointer
+			allocator = new_allocator;
+
+			return true;
+		}
+
 		const_iterator begin() const noexcept
 		{
 			return data;
