@@ -8,17 +8,26 @@
 
 #include <assert.h>
 
+// The following is a summary of the connection between the server and the networking layer...
+//    1. The server asks the operating system to open a "socket" on a specific port, like 8080. It then sits and listens for incoming traffic.
+//    2. A client (like a web browser) reaches out to that IP address and port. The OS accepts the connection and gives the server a unique handle to talk directly to that specific client.
+//    3. The client sends the HTTP request as a stream of bytes over this connection. The server uses a network function (like recv()) to read these bytes into a memory buffer.
+//    4. That memory buffer contains the raw http request ("POST /api/login HTTP/1.1\r\n..."). The server passes this buffer directly into the HTTP_Request::parse() method to parse it.
+//    5. The server takes the newly parsed request.route (e.g., "/api/login") and looks it up in its internal routing table to find the developer's custom function (e.g., login_handler).
+//    6. The server calls this custom function, passing in the parsed HTTP_Request and an empty HTTP_Response for the handler to fill out.
+//    7. The handler processes the request, fills out the HTTP_Response (e.g., response_code=200, body="Login successful"), and returns.
+
 namespace hstl
 {
+	struct HTTP_Header
+	{
+		Str_View key;
+		Str_View value;
+	};
+
 	class HTTP_Request
 	{
 	private:
-		struct HTTP_Header
-		{
-			Str_View key;
-			Str_View value;
-		};
-
 		Str_View method;
 		Str_View route;
 		Str_View protocol;
@@ -76,5 +85,38 @@ namespace hstl
 
 			return request;
 		}
+	};
+
+	struct HTTP_Response
+	{
+		uint32_t response_code;
+		Array<HTTP_Header> headers;
+		Str body;
+	};
+
+	using Route_Handler = void(*)(const HTTP_Request& request, HTTP_Response& response);
+
+	struct Route_Key
+	{
+		Str_View route;
+		Str_View method;
+
+		bool operator==(const Route_Key& other) const
+		{
+			return route == other.route && method == other.method;
+		}
+
+		std::size_t operator()(const Route_Key& key) const
+		{
+			std::size_t h1 = std::hash<const char*>{}(key.route.data());
+			std::size_t h2 = std::hash<const char*>{}(key.method.data());
+			return h1 ^ (h2 << 1);
+		}
+	};
+
+	class HTTP_Server
+	{
+	private:
+		Hash_Map<Route_Key, Route_Handler> routes;
 	};
 };
