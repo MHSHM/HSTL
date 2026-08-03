@@ -361,6 +361,7 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+/build
 /build-debug
 /tools
 *.json
@@ -368,3 +369,4 @@ FodyWeavers.xsd
 *.sublime-workspace
 
 compile_commands.json
+CLAUDE.md
