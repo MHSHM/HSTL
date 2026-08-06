@@ -71,7 +71,6 @@ namespace hstl
 			_headers{allocator} {}
 
 	public:
-		// Written by the parser
 		void set_target(const char* start, size_t length) { _target = Str_View{start, length}; }
 		void set_body(const char* start, size_t length) { _body = Str_View{start, length}; }
 		void set_header(const HTTP_Header& header) { _headers.push(header); }
@@ -79,8 +78,6 @@ namespace hstl
 		void set_version(HTTP_VERSION version) { _version = version; }
 
 	public:
-		// NOTE: The views point into the connection's receive buffer and are only valid for
-		// the duration of the handler call.
 		Str_View target() const { return _target; }
 		Str_View body() const { return _body; }
 		HTTP_METHOD method() const { return _method; }
