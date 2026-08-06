@@ -17,6 +17,7 @@ set(HSTL_PUBLIC_HEADERS
     include/Fixed_Queue.h
     include/Task.h
     include/Job_System.h
+    include/Socket.h
     include/HTTP_Server.h)
 
 add_library(HSTL INTERFACE)
