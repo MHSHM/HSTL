@@ -123,4 +123,64 @@ namespace hstl
 			}
 		}
 	};
+
+	template<>
+	class Result<void>
+	{
+	private:
+		union { Err err; };
+		bool has_err{false};
+
+	public:
+		Result()
+		{
+
+		}
+
+		Result(const Err& _err):
+			has_err{true}
+		{
+			new (&err) Err(_err);
+		}
+
+		Result(const Result& other):
+			has_err{other.has_err}
+		{
+			if (other.has_err)
+			{
+				new (&err) Err(other.err);
+			}
+		}
+
+		Result(Result&& other):
+			has_err{other.has_err}
+		{
+			if (other.has_err)
+			{
+				new (&err) Err(std::move(other.err));
+			}
+		}
+
+		operator bool() const
+		{
+			return !has_err;
+		}
+
+		Result& operator=(const Result&) = delete;
+		Result& operator=(Result&&) = delete;
+
+		Err get_err() const
+		{
+			assert(has_err == true);
+			return err;
+		}
+
+		~Result()
+		{
+			if (has_err == true)
+			{
+				std::destroy_at(&err);
+			}
+		}
+	};
 };
