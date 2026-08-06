@@ -252,3 +252,51 @@ TEST_CASE("Socket bind", "[Socket]")
         CHECK_FALSE(second.bind(taken, "127.0.0.1"));
     }
 }
+
+TEST_CASE("Socket listen", "[Socket]")
+{
+    Winsock_Scope winsock;
+    REQUIRE(winsock.ok);
+
+    SECTION("succeeds on a bound socket")
+    {
+        auto res = Socket::create();
+        REQUIRE(res);
+        Socket sock = std::move(res.get_value());
+
+        REQUIRE(sock.bind(0, "127.0.0.1"));
+        CHECK(sock.listen());
+    }
+
+    SECTION("a listening socket actually accepts connections")
+    {
+        auto res = Socket::create();
+        REQUIRE(res);
+        Socket listener = std::move(res.get_value());
+
+        REQUIRE(listener.bind(0, "127.0.0.1"));
+        REQUIRE(listener.listen());
+
+        auto address = bound_address_of(listener.handle());
+
+        // A client connecting to the listening socket must succeed. Before listen() the OS
+        // would refuse this outright, so it is the observable difference listen() makes.
+        SOCKET client = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+        REQUIRE(client != INVALID_SOCKET);
+
+        CHECK(connect(client, (sockaddr*)&address, sizeof(address)) == 0);
+
+        closesocket(client);
+    }
+
+    SECTION("fails on an unbound socket")
+    {
+        auto res = Socket::create();
+        REQUIRE(res);
+        Socket sock = std::move(res.get_value());
+
+        // NOTE: Winsock rejects listen() on a socket that was never bound. POSIX would assign
+        // an ephemeral port instead, so this expectation is Windows-specific.
+        CHECK_FALSE(sock.listen());
+    }
+}
