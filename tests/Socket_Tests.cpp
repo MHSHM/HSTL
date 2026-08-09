@@ -39,6 +39,33 @@ static sockaddr_in bound_address_of(SOCKET handle)
     return address;
 }
 
+// Brings up a listening socket on an OS-chosen loopback port and reports the address a client
+// needs in order to reach it.
+static Socket listening_socket(sockaddr_in& out_address)
+{
+    auto res = Socket::create();
+    REQUIRE(res);
+    Socket sock = std::move(res.get_value());
+
+    REQUIRE(sock.bind(0, "127.0.0.1"));
+    REQUIRE(sock.listen());
+
+    out_address = bound_address_of(sock.handle());
+
+    return sock;
+}
+
+// A raw client handle already connected to address. Deliberately not a Socket: these tests
+// need a counterparty that owes nothing to the type under test. The caller closes it.
+static SOCKET connected_client(const sockaddr_in& address)
+{
+    SOCKET client = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    REQUIRE(client != INVALID_SOCKET);
+    REQUIRE(connect(client, (const sockaddr*)&address, sizeof(address)) == 0);
+
+    return client;
+}
+
 TEST_CASE("Socket creation", "[Socket]")
 {
     Winsock_Scope winsock;
@@ -298,5 +325,123 @@ TEST_CASE("Socket listen", "[Socket]")
         // NOTE: Winsock rejects listen() on a socket that was never bound. POSIX would assign
         // an ephemeral port instead, so this expectation is Windows-specific.
         CHECK_FALSE(sock.listen());
+    }
+}
+
+// NOTE: accept() blocks when the queue is empty, so every case below either connects a client
+// first — the connection is already queued, so accept() returns without waiting — or expects
+// an immediate failure. A section that calls accept() with nothing pending would hang the
+// whole suite rather than fail it.
+TEST_CASE("Socket accept", "[Socket]")
+{
+    Winsock_Scope winsock;
+    REQUIRE(winsock.ok);
+
+    SECTION("hands back a fresh socket for a queued connection")
+    {
+        sockaddr_in address{};
+        Socket listener = listening_socket(address);
+
+        SOCKET client = connected_client(address);
+
+        auto res = listener.accept();
+        REQUIRE(res);
+        Socket connection = std::move(res.get_value());
+
+        CHECK(connection.is_valid());
+        // The connection is its own socket; the listener survives untouched and keeps listening.
+        CHECK(connection.handle() != listener.handle());
+        CHECK(listener.is_valid());
+
+        closesocket(client);
+    }
+
+    SECTION("the accepted socket is paired with the client that connected")
+    {
+        sockaddr_in address{};
+        Socket listener = listening_socket(address);
+
+        SOCKET client = connected_client(address);
+
+        auto res = listener.accept();
+        REQUIRE(res);
+        Socket connection = std::move(res.get_value());
+
+        // The server side's peer must be exactly the client's own local address, which is what
+        // proves accept() returned a handle for *this* connection rather than some other socket.
+        sockaddr_in client_local{};
+        int length = sizeof(client_local);
+        REQUIRE(getsockname(client, (sockaddr*)&client_local, &length) == 0);
+
+        sockaddr_in peer{};
+        length = sizeof(peer);
+        REQUIRE(getpeername(connection.handle(), (sockaddr*)&peer, &length) == 0);
+
+        CHECK(peer.sin_port == client_local.sin_port);
+        CHECK(peer.sin_addr.s_addr == client_local.sin_addr.s_addr);
+
+        closesocket(client);
+    }
+
+    SECTION("serves connections in turn without disturbing the listener")
+    {
+        sockaddr_in address{};
+        Socket listener = listening_socket(address);
+
+        SOCKET first_client = connected_client(address);
+        SOCKET second_client = connected_client(address);
+
+        auto first_res = listener.accept();
+        REQUIRE(first_res);
+        Socket first = std::move(first_res.get_value());
+
+        auto second_res = listener.accept();
+        REQUIRE(second_res);
+        Socket second = std::move(second_res.get_value());
+
+        // Two clients, two distinct connection sockets, and a listener still good for more.
+        CHECK(first.handle() != second.handle());
+        CHECK(first.is_valid());
+        CHECK(second.is_valid());
+        CHECK(bound_address_of(listener.handle()).sin_port == address.sin_port);
+
+        closesocket(first_client);
+        closesocket(second_client);
+    }
+
+    SECTION("the accepted socket closes independently of the listener")
+    {
+        sockaddr_in address{};
+        Socket listener = listening_socket(address);
+
+        SOCKET client = connected_client(address);
+        SOCKET raw = INVALID_SOCKET;
+
+        {
+            auto res = listener.accept();
+            REQUIRE(res);
+            Socket connection = std::move(res.get_value());
+            raw = connection.handle();
+        }
+
+        // The connection's handle is gone with it, but the listener is untouched.
+        sockaddr_in probe{};
+        int length = sizeof(probe);
+        CHECK(getsockname(raw, (sockaddr*)&probe, &length) == SOCKET_ERROR);
+        CHECK(listener.is_valid());
+        CHECK(getsockname(listener.handle(), (sockaddr*)&probe, &length) == 0);
+
+        closesocket(client);
+    }
+
+    SECTION("fails on a socket that is not listening")
+    {
+        auto res = Socket::create();
+        REQUIRE(res);
+        Socket sock = std::move(res.get_value());
+
+        // NOTE: WSAEINVAL, and Winsock reports it immediately rather than blocking — accept()
+        // only ever waits on a socket that reached the listening state.
+        CHECK_FALSE(sock.accept());
     }
 }

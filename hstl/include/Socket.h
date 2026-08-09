@@ -131,5 +131,27 @@ namespace hstl
 
 			return {};
 		}
+
+		Result<Socket> accept()
+		{
+			while (true)
+			{
+				SOCKET connection_handle = ::accept(_handle, nullptr, nullptr);
+
+				if (connection_handle != INVALID_SOCKET)
+				{
+					return Socket::adopt(connection_handle);
+				}
+
+				const int error = WSAGetLastError();
+
+				if (error == WSAECONNRESET || error == WSAECONNABORTED)
+				{
+					continue;
+				}
+
+				return Err("Failed to accept a connection: {}", error);
+			}
+		}
 	};
 };
