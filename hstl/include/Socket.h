@@ -5,6 +5,8 @@
 
 #include "Result.h"
 
+#include <climits>
+
 namespace hstl
 {
 	class Socket
@@ -127,6 +129,67 @@ namespace hstl
 			if (::listen(_handle, backlog) != 0)
 			{
 				return Err("Failed to listen on the socket: {}", WSAGetLastError());
+			}
+
+			return {};
+		}
+
+		Result<Socket> accept()
+		{
+			while (true)
+			{
+				SOCKET connection_handle = ::accept(_handle, nullptr, nullptr);
+
+				if (connection_handle != INVALID_SOCKET)
+				{
+					return Socket::adopt(connection_handle);
+				}
+
+				const int error = WSAGetLastError();
+
+				if (error == WSAECONNRESET || error == WSAECONNABORTED)
+				{
+					continue;
+				}
+
+				return Err("Failed to accept a connection: {}", error);
+			}
+		}
+
+		Result<size_t> recv(char* buffer, size_t length)
+		{
+			assert(buffer != nullptr);
+			assert(length > 0);
+
+			const int window = length > static_cast<size_t>(INT_MAX) ? INT_MAX : static_cast<int>(length);
+			const int received = ::recv(_handle, buffer, window, 0);
+
+			if (received == SOCKET_ERROR)
+			{
+				return Err("Failed to receive from the connection: {}", WSAGetLastError());
+			}
+
+			return static_cast<size_t>(received);
+		}
+
+		Result<void> send(const char* buffer, size_t length)
+		{
+			assert(buffer != nullptr);
+
+			size_t written = 0;
+
+			while (written < length)
+			{
+				const size_t remaining = length - written;
+				const int window = remaining > static_cast<size_t>(INT_MAX) ? INT_MAX : static_cast<int>(remaining);
+
+				const int sent = ::send(_handle, buffer + written, window, 0);
+				if (sent == SOCKET_ERROR)
+				{
+					return Err("Failed to send on the connection: {}", WSAGetLastError());
+				}
+
+				written += static_cast<size_t>(sent);
 			}
 
 			return {};
