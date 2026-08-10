@@ -3,9 +3,11 @@
 #include "Str.h"
 #include "Array.h"
 #include "Memory.h"
+#include "Socket.h"
 
 #include <cctype>
 #include <cstdint>
+#include <utility>
 
 namespace hstl
 {
@@ -137,5 +139,146 @@ namespace hstl
 		Str_View body() const { return _body; }
 		HTTP_STATUS_CODE status_code() const { return _status_code; }
 		const Array<HTTP_Header>& headers() const { return _headers; }
+	};
+
+	using HTTP_Handler = HTTP_Response (*)(const HTTP_Request&);
+
+	struct HTTP_Route
+	{
+		Str_View path;
+		HTTP_Handler handler;
+		HTTP_METHOD method;
+	};
+
+	class HTTP_Server
+	{
+	private:
+		Socket _listener;
+		Array<HTTP_Route> _routes;
+		bool _owns_winsock{false};
+
+	private:
+		HTTP_Server(Socket&& listener, Allocator* allocator):
+			_listener{std::move(listener)},
+			_routes{allocator},
+			_owns_winsock{true}
+		{
+
+		}
+
+	public:
+		HTTP_Server(const HTTP_Server&) = delete;
+		HTTP_Server& operator=(const HTTP_Server&) = delete;
+
+		HTTP_Server(HTTP_Server&& source):
+			_listener{std::move(source._listener)},
+			_routes{std::move(source._routes)},
+			_owns_winsock{source._owns_winsock}
+		{
+			source._owns_winsock = false;
+		}
+
+		HTTP_Server& operator=(HTTP_Server&& source)
+		{
+			if (this == &source)
+			{
+				return *this;
+			}
+
+			if (_owns_winsock)
+			{
+				WSACleanup();
+			}
+
+			_listener = std::move(source._listener);
+			_routes = std::move(source._routes);
+			_owns_winsock = source._owns_winsock;
+
+			source._owns_winsock = false;
+
+			return *this;
+		}
+
+		~HTTP_Server()
+		{
+			if (_owns_winsock)
+			{
+				WSACleanup();
+				_owns_winsock = false;
+			}
+		}
+
+	public:
+		static Result<HTTP_Server> create(uint16_t port, Str_View ip_address = "0.0.0.0" /*must be null-terminated*/, Allocator* allocator = Default_Allocator::get())
+		{
+			WSAData winsock_data{};
+
+			const int startup_error = WSAStartup(MAKEWORD(2, 2), &winsock_data);
+			if (startup_error != 0)
+			{
+				return Err("Failed to initialize Winsock: {}", startup_error);
+			}
+
+			auto listener_res = Socket::create();
+			if (!listener_res)
+			{
+				WSACleanup();
+				return listener_res.get_err();
+			}
+
+			Socket listener = std::move(listener_res.get_value());
+
+			auto bind_res = listener.bind(port, ip_address);
+			if (!bind_res)
+			{
+				WSACleanup();
+				return bind_res.get_err();
+			}
+
+			auto listen_res = listener.listen();
+			if (!listen_res)
+			{
+				WSACleanup();
+				return listen_res.get_err();
+			}
+
+			return HTTP_Server{std::move(listener), allocator};
+		}
+
+	public:
+		void add_route(HTTP_METHOD method, Str_View path, HTTP_Handler handler)
+		{
+			assert(handler != nullptr);
+			assert(path.count() > 0);
+
+			_routes.push(HTTP_Route{path, handler, method});
+		}
+
+		const HTTP_Route* find_route(HTTP_METHOD method, Str_View path) const
+		{
+			for (const auto& route : _routes)
+			{
+				if (route.method != method)
+				{
+					continue;
+				}
+
+				if (route.path == path)
+				{
+					return &route;
+				}
+			}
+
+			return nullptr;
+		}
+
+		const Array<HTTP_Route>& routes() const { return _routes; }
+
+	public:
+		// TODO: accept connections and serve each one to completion.
+		Result<void> run()
+		{
+			return {};
+		}
 	};
 };
