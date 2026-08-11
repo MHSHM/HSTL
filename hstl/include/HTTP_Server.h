@@ -73,6 +73,20 @@ namespace hstl
 			_headers{allocator} {}
 
 	public:
+		// NOTE: parse_request() re-reads a growing buffer from the start on every pass, and
+		// set_header() appends - so without this a half-arrived request would push its headers
+		// again on each retry. _headers.clear() keeps the capacity, which is why a reused
+		// request stops allocating after the first one.
+		void clear()
+		{
+			_target = Str_View{};
+			_body = Str_View{};
+			_headers.clear();
+			_method = HTTP_METHOD::HTTP_UNKNOWN;
+			_version = HTTP_VERSION::HTTP_UNKNOWN;
+		}
+
+	public:
 		void set_target(const char* start, size_t length) { _target = Str_View{start, length}; }
 		void set_body(const char* start, size_t length) { _body = Str_View{start, length}; }
 		void set_header(const HTTP_Header& header) { _headers.push(header); }
@@ -185,6 +199,8 @@ namespace hstl
 	{
 		assert(buffer != nullptr);
 
+		out_request.clear();
+
 		auto payload = Str_View{buffer, length};
 
 		auto request_line_end = payload.find("\r\n");
@@ -192,7 +208,6 @@ namespace hstl
 		{
 			return HTTP_PARSE_STATUS::HTTP_INCOMPLETE;
 		}
-
 
 		auto request_line = payload.substr(0, request_line_end);
 
