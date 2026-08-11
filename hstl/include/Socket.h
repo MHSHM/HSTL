@@ -38,10 +38,7 @@ namespace hstl
 				return *this;
 			}
 
-			if (_handle != INVALID_SOCKET)
-			{
-				closesocket(_handle);
-			}
+			close();
 
 			_handle = source._handle;
 
@@ -52,11 +49,7 @@ namespace hstl
 
 		~Socket()
 		{
-			if (_handle != INVALID_SOCKET)
-			{
-				closesocket(_handle);
-				_handle = INVALID_SOCKET;
-			}
+			close();
 		}
 
 	public:
@@ -92,6 +85,17 @@ namespace hstl
 		SOCKET handle() const
 		{
 			return _handle;
+		}
+
+		// Releases the handle early, leaving an empty but usable socket behind. Closing twice is
+		// a no-op, so the destructor can lean on this unconditionally.
+		void close()
+		{
+			if (_handle != INVALID_SOCKET)
+			{
+				closesocket(_handle);
+				_handle = INVALID_SOCKET;
+			}
 		}
 
 		Result<void> bind(uint16_t port, Str_View ip_address = "0.0.0.0" /*must be null-terminated*/)

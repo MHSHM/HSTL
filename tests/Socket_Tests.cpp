@@ -223,6 +223,75 @@ TEST_CASE("Socket destruction closes the handle exactly once", "[Socket]")
     CHECK(WSAGetLastError() == WSAENOTSOCK);
 }
 
+TEST_CASE("Socket close", "[Socket]")
+{
+    Winsock_Scope winsock;
+    REQUIRE(winsock.ok);
+
+    SECTION("releases the handle and empties the socket")
+    {
+        auto res = Socket::create();
+        REQUIRE(res);
+        Socket sock = std::move(res.get_value());
+        SOCKET raw = sock.handle();
+
+        sock.close();
+
+        CHECK_FALSE(sock.is_valid());
+        CHECK(sock.handle() == INVALID_SOCKET);
+
+        sockaddr_in address{};
+        int length = sizeof(address);
+        CHECK(getsockname(raw, (sockaddr*)&address, &length) == SOCKET_ERROR);
+        CHECK(WSAGetLastError() == WSAENOTSOCK);
+    }
+
+    SECTION("closing twice is harmless")
+    {
+        auto res = Socket::create();
+        REQUIRE(res);
+        Socket sock = std::move(res.get_value());
+
+        sock.close();
+        // The second call must not hand the freed handle back to closesocket — which is what
+        // lets the destructor call close() without checking whether the caller already did.
+        sock.close();
+
+        CHECK_FALSE(sock.is_valid());
+    }
+
+    SECTION("closing an already-empty socket is harmless")
+    {
+        auto res = Socket::create();
+        REQUIRE(res);
+        Socket source = std::move(res.get_value());
+        Socket sink = std::move(source);
+
+        source.close();
+
+        CHECK_FALSE(source.is_valid());
+        CHECK(sink.is_valid());
+    }
+
+    SECTION("a closed socket can still be move assigned into")
+    {
+        auto first_res = Socket::create();
+        REQUIRE(first_res);
+        Socket sock = std::move(first_res.get_value());
+        sock.close();
+
+        auto second_res = Socket::create();
+        REQUIRE(second_res);
+        Socket other = std::move(second_res.get_value());
+        SOCKET raw = other.handle();
+
+        sock = std::move(other);
+
+        CHECK(sock.handle() == raw);
+        CHECK(sock.is_valid());
+    }
+}
+
 TEST_CASE("Socket moved-from destruction is harmless", "[Socket]")
 {
     Winsock_Scope winsock;
