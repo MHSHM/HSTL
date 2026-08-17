@@ -67,6 +67,11 @@ namespace hstl
 			memory_block = ::operator new(capacity, std::align_val_t(alignof(std::max_align_t)));
 		}
 
+		Linear_Allocator(const Linear_Allocator&) = delete;
+		Linear_Allocator& operator=(const Linear_Allocator&) = delete;
+		Linear_Allocator(Linear_Allocator&&) = delete;
+		Linear_Allocator& operator=(Linear_Allocator&&) = delete;
+
 		[[nodiscard]]
 		void* allocate(size_t size, size_t alignment = alignof(std::max_align_t)) override
 		{
