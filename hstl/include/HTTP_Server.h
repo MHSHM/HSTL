@@ -6,6 +6,7 @@
 #include "Socket.h"
 
 #include <cctype>
+#include <cstring>
 #include <cstdint>
 #include <utility>
 
@@ -346,6 +347,57 @@ namespace hstl
 		return HTTP_PARSE_STATUS::HTTP_COMPLETE;
 	}
 
+	static constexpr size_t MAX_DECIMAL_DIGITS = 20;
+
+	static size_t write_decimal(char* out, size_t value)
+	{
+		char reversed[MAX_DECIMAL_DIGITS];
+		size_t count = 0;
+
+		do
+		{
+			reversed[count] = static_cast<char>('0' + (value % 10));
+			++count;
+			value /= 10;
+		}
+		while (value > 0);
+
+		for (size_t i = 0; i < count; ++i)
+		{
+			out[i] = reversed[count - 1 - i];
+		}
+
+		return count;
+	}
+
+	static Str_View status_code_to_str(HTTP_STATUS_CODE status_code)
+	{
+		switch (status_code)
+		{
+			case HTTP_STATUS_CODE::HTTP_200: return "200 OK";
+			case HTTP_STATUS_CODE::HTTP_201: return "201 Created";
+			case HTTP_STATUS_CODE::HTTP_204: return "204 No Content";
+
+			case HTTP_STATUS_CODE::HTTP_301: return "301 Moved Permanently";
+			case HTTP_STATUS_CODE::HTTP_304: return "304 Not Modified";
+
+			case HTTP_STATUS_CODE::HTTP_400: return "400 Bad Request";
+			case HTTP_STATUS_CODE::HTTP_403: return "403 Forbidden";
+			case HTTP_STATUS_CODE::HTTP_404: return "404 Not Found";
+			case HTTP_STATUS_CODE::HTTP_405: return "405 Method Not Allowed";
+			case HTTP_STATUS_CODE::HTTP_408: return "408 Request Timeout";
+			case HTTP_STATUS_CODE::HTTP_413: return "413 Content Too Large";
+			case HTTP_STATUS_CODE::HTTP_414: return "414 URI Too Long";
+			case HTTP_STATUS_CODE::HTTP_431: return "431 Request Header Fields Too Large";
+
+			case HTTP_STATUS_CODE::HTTP_500: return "500 Internal Server Error";
+			case HTTP_STATUS_CODE::HTTP_501: return "501 Not Implemented";
+			case HTTP_STATUS_CODE::HTTP_505: return "505 HTTP Version Not Supported";
+		}
+
+		return "500 Internal Server Error";
+	}
+
 	class HTTP_Server
 	{
 	private:
@@ -419,7 +471,6 @@ namespace hstl
 
 			// TODO: dispatch the request to its route and send the response.
 		}
-
 
 	public:
 		HTTP_Server(const HTTP_Server&) = delete;
