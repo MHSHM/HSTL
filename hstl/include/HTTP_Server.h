@@ -472,6 +472,69 @@ namespace hstl
 			// TODO: dispatch the request to its route and send the response.
 		}
 
+	private:
+		static constexpr size_t RESPONSE_HEAD_SIZE = 2048;
+
+		Result<void> send_response(Socket& connection, const HTTP_Response& response)
+		{
+			char head[RESPONSE_HEAD_SIZE];
+			size_t written = 0;
+
+			auto append = [&](Str_View piece) -> bool
+			{
+				if (piece.count() > RESPONSE_HEAD_SIZE - written)
+				{
+					return false;
+				}
+
+				memcpy(head + written, piece.data(), piece.count());
+				written += piece.count();
+
+				return true;
+			};
+
+			char digits[MAX_DECIMAL_DIGITS];
+			const size_t body_length = response.body().count();
+
+			bool fits =
+				append("HTTP/1.1 ") &&
+				append(status_code_to_str(response.status_code())) &&
+				append("\r\n") &&
+				append("Content-Length: ") &&
+				append(Str_View{digits, write_decimal(digits, body_length)}) &&
+				append("\r\n") &&
+				append("Connection: close\r\n");
+
+			for (const auto& header : response.headers())
+			{
+				fits = fits &&
+					append(header.name) &&
+					append(": ") &&
+					append(header.value) &&
+					append("\r\n");
+			}
+
+			fits = fits && append("\r\n");
+
+			if (!fits)
+			{
+				return Err("Response head is larger than {} bytes", RESPONSE_HEAD_SIZE);
+			}
+
+			auto head_res = connection.send(head, written);
+			if (!head_res)
+			{
+				return head_res.get_err();
+			}
+
+			if (body_length > 0)
+			{
+				return connection.send(response.body().data(), body_length);
+			}
+
+			return {};
+		}
+
 	public:
 		HTTP_Server(const HTTP_Server&) = delete;
 		HTTP_Server& operator=(const HTTP_Server&) = delete;
