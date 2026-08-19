@@ -436,6 +436,21 @@ namespace hstl
 
 				if (status == HTTP_PARSE_STATUS::HTTP_COMPLETE)
 				{
+					const HTTP_Route* route = find_route(request.method(), request.target());
+
+					if (route)
+					{
+						response = route->handler(request);
+					}
+					else if (has_path(request.target()))
+					{
+						response.set_status_code(HTTP_STATUS_CODE::HTTP_405);
+					}
+					else
+					{
+						response.set_status_code(HTTP_STATUS_CODE::HTTP_404);
+					}
+
 					break;
 				}
 
@@ -658,6 +673,19 @@ namespace hstl
 			}
 
 			return nullptr;
+		}
+
+		bool has_path(Str_View path) const
+		{
+			for (const auto& route : _routes)
+			{
+				if (route.path == path)
+				{
+					return true;
+				}
+			}
+
+			return false;
 		}
 
 		const Array<HTTP_Route>& routes() const { return _routes; }
