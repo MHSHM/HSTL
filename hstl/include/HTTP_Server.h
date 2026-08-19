@@ -498,6 +498,8 @@ namespace hstl
 			auto bind_res = listener.bind(port, ip_address);
 			if (!bind_res)
 			{
+				// NOTE: the socket goes before WSACleanup().
+				listener.close();
 				WSACleanup();
 				return bind_res.get_err();
 			}
@@ -505,6 +507,7 @@ namespace hstl
 			auto listen_res = listener.listen();
 			if (!listen_res)
 			{
+				listener.close();
 				WSACleanup();
 				return listen_res.get_err();
 			}
