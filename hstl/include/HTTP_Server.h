@@ -351,16 +351,75 @@ namespace hstl
 	private:
 		Socket _listener;
 		Array<HTTP_Route> _routes;
+		Allocator* _allocator{nullptr};
 		bool _owns_winsock{false};
 
 	private:
 		HTTP_Server(Socket&& listener, Allocator* allocator):
 			_listener{std::move(listener)},
 			_routes{allocator},
+			_allocator{allocator},
 			_owns_winsock{true}
 		{
 
 		}
+
+	private:
+		static constexpr size_t REQUEST_BUFFER_SIZE = 8192;
+
+		// Reads one request off connection and answers it.
+		void serve(Socket& connection)
+		{
+			// NOTE: one buffer per connection
+			char buffer[REQUEST_BUFFER_SIZE];
+			size_t received = 0;
+
+			HTTP_Request request{_allocator};
+
+			while (true)
+			{
+				const auto status = parse_request(buffer, received, request);
+
+				if (status == HTTP_PARSE_STATUS::HTTP_COMPLETE)
+				{
+					break;
+				}
+
+				if (status == HTTP_PARSE_STATUS::HTTP_MALFORMED)
+				{
+					// TODO: answer 400 before closing.
+					return;
+				}
+
+				const size_t free_space = REQUEST_BUFFER_SIZE - received;
+				if (free_space == 0)
+				{
+					// NOTE: Socket::recv asserts on a zero length, so a full buffer has to be
+					// caught here - it can never be handed on as a read of nothing.
+					// TODO: answer 431 before closing.
+					return;
+				}
+
+				auto recv_res = connection.recv(buffer + received, free_space);
+				if (!recv_res)
+				{
+					// The connection broke mid-request. There is no longer anyone to answer.
+					return;
+				}
+
+				const size_t bytes = recv_res.get_value();
+				if (bytes == 0)
+				{
+					// A clean close, but a truncated request - the client left before finishing.
+					return;
+				}
+
+				received += bytes;
+			}
+
+			// TODO: dispatch the request to its route and send the response.
+		}
+
 
 	public:
 		HTTP_Server(const HTTP_Server&) = delete;
@@ -369,6 +428,7 @@ namespace hstl
 		HTTP_Server(HTTP_Server&& source):
 			_listener{std::move(source._listener)},
 			_routes{std::move(source._routes)},
+			_allocator{source._allocator},
 			_owns_winsock{source._owns_winsock}
 		{
 			source._owns_winsock = false;
@@ -393,6 +453,7 @@ namespace hstl
 
 			_listener = std::move(source._listener);
 			_routes = std::move(source._routes);
+			_allocator = source._allocator;
 			_owns_winsock = source._owns_winsock;
 
 			source._owns_winsock = false;
