@@ -545,10 +545,18 @@ namespace hstl
 		const Array<HTTP_Route>& routes() const { return _routes; }
 
 	public:
-		// TODO: accept connections and serve each one to completion.
 		Result<void> run()
 		{
-			return {};
+			while (true)
+			{
+				auto socket_res = _listener.accept();
+				if (!socket_res)
+				{
+					return socket_res.get_err();
+				}
+
+				serve(socket_res.get_value());
+			}
 		}
 	};
 };
