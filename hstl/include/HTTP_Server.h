@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Log.h"
 #include "Str.h"
 #include "Array.h"
 #include "Memory.h"
@@ -422,11 +423,12 @@ namespace hstl
 		// Reads one request off connection and answers it.
 		void serve(Socket& connection)
 		{
-			// NOTE: one buffer per connection
+			// NOTE: one buffer per connection and the whole request is limited to 8KB for now
 			char buffer[REQUEST_BUFFER_SIZE];
 			size_t received = 0;
 
 			HTTP_Request request{_allocator};
+			HTTP_Response response{_allocator};
 
 			while (true)
 			{
@@ -439,37 +441,39 @@ namespace hstl
 
 				if (status == HTTP_PARSE_STATUS::HTTP_MALFORMED)
 				{
-					// TODO: answer 400 before closing.
-					return;
+					response.set_status_code(HTTP_STATUS_CODE::HTTP_400);
+					break;
 				}
 
 				const size_t free_space = REQUEST_BUFFER_SIZE - received;
 				if (free_space == 0)
 				{
-					// NOTE: Socket::recv asserts on a zero length, so a full buffer has to be
-					// caught here - it can never be handed on as a read of nothing.
-					// TODO: answer 431 before closing.
-					return;
+					response.set_status_code(HTTP_STATUS_CODE::HTTP_431);
+					break;
 				}
 
 				auto recv_res = connection.recv(buffer + received, free_space);
 				if (!recv_res)
 				{
-					// The connection broke mid-request. There is no longer anyone to answer.
+					log_error("Failed to read the request: {}", recv_res.get_err().get_message());
 					return;
 				}
 
 				const size_t bytes = recv_res.get_value();
 				if (bytes == 0)
 				{
-					// A clean close, but a truncated request - the client left before finishing.
+					// A clean close, but a truncated request.
 					return;
 				}
 
 				received += bytes;
 			}
 
-			// TODO: dispatch the request to its route and send the response.
+			auto res = send_response(connection, response);
+			if (!res)
+			{
+				log_error("Failed to send the response: {}", res.get_err().get_message());
+			}
 		}
 
 	private:
